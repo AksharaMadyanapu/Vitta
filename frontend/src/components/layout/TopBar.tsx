@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, HelpCircle } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 export interface TopBarProps {
   onSearch?: (query: string) => void;
@@ -10,6 +11,7 @@ export interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(2);
+  const { setIsHelpOpen } = useOnboarding();
 
   const notifications = [
     {
@@ -52,6 +54,17 @@ export const TopBar: React.FC<TopBarProps> = () => {
             />
           </div>
 
+          {/* Help Button */}
+          <button
+            id="tour-help-button"
+            onClick={() => setIsHelpOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#4B5563] hover:text-[#111827] hover:bg-[#F3F4F6] transition-colors"
+            title="Help and guided tour"
+          >
+            <HelpCircle className="w-4 h-4 text-[#3F3DDB]" />
+            <span className="hidden sm:inline">Help</span>
+          </button>
+
           {/* Notification Bell */}
           <button
             onClick={() => setNotificationsOpen(true)}
@@ -66,7 +79,7 @@ export const TopBar: React.FC<TopBarProps> = () => {
 
           {/* User profile initials */}
           <div className="flex items-center gap-2 pl-2 border-l border-[#E5E7EB]">
-            <div className="w-7 h-7 rounded-full bg-[#EEF2FF] text-[#2548C9] font-medium text-xs flex items-center justify-center">
+            <div className="w-7 h-7 rounded-full bg-[#EEF0FD] text-[#3F3DDB] font-medium text-xs flex items-center justify-center">
               RR
             </div>
             <span className="text-sm text-[#374151] hidden md:inline font-medium">

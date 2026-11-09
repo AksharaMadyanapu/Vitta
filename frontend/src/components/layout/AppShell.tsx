@@ -3,12 +3,20 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
+import { GuidedTour } from '@/components/onboarding/GuidedTour';
+import { HelpDrawer } from '@/components/onboarding/HelpDrawer';
 
 export const AppShell: React.FC = () => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-[#111827]">
+    <div className="min-h-screen bg-[#F5F6FA] text-[#111827]">
+      {/* Onboarding Modals & Tour */}
+      <WelcomeModal />
+      <GuidedTour />
+      <HelpDrawer />
+
       {/* Sidebar */}
       <Sidebar />
 
