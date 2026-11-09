@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/utils/cn';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'safe' | 'caution' | 'danger' | 'neutral' | 'accent';
+  variant?: 'safe' | 'caution' | 'danger' | 'neutral' | 'brand' | 'teal';
   size?: 'sm' | 'md';
 }
 
@@ -14,11 +14,12 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const variantStyles = {
-    safe: "bg-[#ECFDF3] text-[#15803D] border border-[#D1FADF]",
-    caution: "bg-[#FFFAEB] text-[#B45309] border border-[#FEDF89]",
-    danger: "bg-[#FEF3F2] text-[#B42318] border border-[#FECDCA]",
-    neutral: "bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]",
-    accent: "bg-[#EEF2FF] text-[#2548C9] border border-[#C7D2FE]",
+    safe: "bg-[#E8F7EE] text-[#15803D] border border-[#C6F0D4]",
+    caution: "bg-[#FFF4DB] text-[#B45309] border border-[#FFE5A3]",
+    danger: "bg-[#FDECEA] text-[#B42318] border border-[#FAC7C3]",
+    neutral: "bg-[#F3F4F6] text-[#4B5563] border border-[#E8EAF0]",
+    brand: "bg-[#EEF0FD] text-[#3F3DDB] border border-[#D8DAFA]",
+    teal: "bg-[#E6F7F7] text-[#0EA5A4] border border-[#B2EBEB]",
   };
 
   const sizeStyles = {

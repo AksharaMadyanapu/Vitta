@@ -7,41 +7,55 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#F7F8FA',
+        background: '#F5F6FA',
         surface: '#FFFFFF',
+        sidebar: {
+          DEFAULT: '#1E1B4B',
+          hover: '#292569',
+          active: '#312E81',
+          text: '#FFFFFF',
+          muted: '#A5B4FC',
+        },
         border: {
-          DEFAULT: '#E5E7EB',
-          subtle: '#F3F4F6',
-          strong: '#D1D5DB',
+          DEFAULT: '#E8EAF0',
+          subtle: '#F1F2F6',
+          strong: '#D2D5E0',
         },
         primary: {
           DEFAULT: '#111827',
           secondary: '#6B7280',
           muted: '#9CA3AF',
         },
-        // ONE Accent colour
-        accent: {
-          DEFAULT: '#2548C9',
-          hover: '#1E3EA8',
-          light: '#EEF2FF',
-          border: '#C7D2FE',
+        // Deep Indigo brand colour
+        brand: {
+          DEFAULT: '#3F3DDB',
+          hover: '#3230C8',
+          light: '#EEF0FD',
+          border: '#D8DAFA',
         },
-        // Soft status colours (muted pills)
+        // Teal secondary accent
+        tealAccent: {
+          DEFAULT: '#0EA5A4',
+          hover: '#0D9488',
+          light: '#E6F7F7',
+          border: '#B2EBEB',
+        },
+        // Status soft pills
         status: {
           safe: {
             text: '#15803D',
-            bg: '#ECFDF3',
-            border: '#D1FADF',
+            bg: '#E8F7EE',
+            border: '#C6F0D4',
           },
           caution: {
             text: '#B45309',
-            bg: '#FFFAEB',
-            border: '#FEDF89',
+            bg: '#FFF4DB',
+            border: '#FFE5A3',
           },
           danger: {
             text: '#B42318',
-            bg: '#FEF3F2',
-            border: '#FECDCA',
+            bg: '#FDECEA',
+            border: '#FAC7C3',
           },
           neutral: {
             text: '#4B5563',
@@ -52,15 +66,17 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
       },
       borderRadius: {
-        card: '10px',
+        card: '14px',
       },
       boxShadow: {
-        sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        card: '0 1px 2px rgba(16,24,40,0.05), 0 4px 12px rgba(16,24,40,0.04)',
+        'card-hover': '0 4px 8px rgba(16,24,40,0.06), 0 12px 20px rgba(16,24,40,0.06)',
       },
       transitionDuration: {
-        DEFAULT: '150ms',
+        DEFAULT: '180ms',
       },
     },
   },

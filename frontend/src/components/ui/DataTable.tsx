@@ -121,7 +121,7 @@ export function DataTable<T extends Record<string, any>>({
               setCurrentPage(1);
             }}
             placeholder={searchPlaceholder}
-            className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:border-[#2548C9] focus:ring-1 focus:ring-[#2548C9] transition-colors"
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#E8EAF0] rounded-lg text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:border-[#3F3DDB] focus:ring-1 focus:ring-[#3F3DDB] transition-colors"
           />
         </div>
 
@@ -136,7 +136,7 @@ export function DataTable<T extends Record<string, any>>({
               setItemsPerPage(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="bg-white border border-[#E5E7EB] rounded-md text-[#374151] text-xs px-2 py-1 focus:outline-none focus:border-[#2548C9]"
+            className="bg-white border border-[#E8EAF0] rounded-md text-[#374151] text-xs px-2 py-1 focus:outline-none focus:border-[#3F3DDB]"
           >
             <option value={5}>5 per page</option>
             <option value={10}>10 per page</option>
@@ -145,12 +145,12 @@ export function DataTable<T extends Record<string, any>>({
         </div>
       </div>
 
-      {/* Table Container */}
-      <div className="rounded-[10px] border border-[#E5E7EB] bg-white overflow-hidden shadow-sm">
+      {/* Table Container: 52px rows, clean light hover */}
+      <div className="rounded-[14px] border border-[#E8EAF0] bg-white overflow-hidden shadow-card">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="border-b border-[#E5E7EB] bg-[#F9FAFB] text-xs font-semibold text-[#6B7280] sticky top-0">
+              <tr className="border-b border-[#E8EAF0] bg-[#F9FAFB] text-xs font-semibold text-[#6B7280] sticky top-0">
                 {columns.map((col) => {
                   const isSorted = sortKey === col.key;
                   return (
@@ -158,7 +158,7 @@ export function DataTable<T extends Record<string, any>>({
                       key={col.key}
                       onClick={() => col.sortable && handleSort(col.key)}
                       className={cn(
-                        "py-3 px-4 select-none h-11",
+                        "py-3.5 px-4 select-none h-11",
                         col.sortable && "cursor-pointer hover:text-[#111827]",
                         col.align === 'right' && "text-right",
                         col.align === 'center' && "text-center",
@@ -177,9 +177,9 @@ export function DataTable<T extends Record<string, any>>({
                           <span className="text-[#9CA3AF]">
                             {isSorted ? (
                               sortDirection === 'asc' ? (
-                                <ChevronUp className="w-3.5 h-3.5 text-[#2548C9]" />
+                                <ChevronUp className="w-3.5 h-3.5 text-[#3F3DDB]" />
                               ) : (
-                                <ChevronDown className="w-3.5 h-3.5 text-[#2548C9]" />
+                                <ChevronDown className="w-3.5 h-3.5 text-[#3F3DDB]" />
                               )
                             ) : (
                               <ChevronsUpDown className="w-3 h-3" />
@@ -192,14 +192,14 @@ export function DataTable<T extends Record<string, any>>({
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E5E7EB]">
+            <tbody className="divide-y divide-[#E8EAF0]">
               {paginatedData.length > 0 ? (
                 paginatedData.map((row, idx) => (
                   <tr
                     key={row.id || idx}
                     onClick={() => onRowClick && onRowClick(row)}
                     className={cn(
-                      "h-12 transition-colors duration-150 hover:bg-[#F9FAFB]",
+                      "h-[52px] transition-colors duration-180 hover:bg-[#F9FAFB]",
                       onRowClick && "cursor-pointer"
                     )}
                   >
@@ -209,7 +209,7 @@ export function DataTable<T extends Record<string, any>>({
                         <td
                           key={col.key}
                           className={cn(
-                            "py-3 px-4 text-[#111827] whitespace-nowrap text-sm",
+                            "py-3.5 px-4 text-[#111827] whitespace-nowrap text-sm",
                             col.align === 'right' && "text-right tabular-nums",
                             col.align === 'center' && "text-center",
                             col.className
@@ -225,7 +225,7 @@ export function DataTable<T extends Record<string, any>>({
                 <tr>
                   <td
                     colSpan={columns.length}
-                    className="py-10 px-4 text-center text-sm text-[#6B7280]"
+                    className="py-12 px-4 text-center text-sm text-[#6B7280]"
                   >
                     {emptyMessage}
                   </td>

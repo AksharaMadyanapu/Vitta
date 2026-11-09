@@ -3,10 +3,11 @@ import { cn } from '@/utils/cn';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  isClickable?: boolean;
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, padding = 'md', children, ...props }, ref) => {
+  ({ className, padding = 'md', isClickable = false, children, ...props }, ref) => {
     const paddingClasses = {
       none: '',
       sm: 'p-4',
@@ -18,7 +19,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-[10px] bg-white border border-[#E5E7EB] shadow-sm transition-colors duration-150",
+          "rounded-[14px] bg-white border border-[#E8EAF0] shadow-card transition-all duration-180",
+          isClickable && "cursor-pointer hover:-translate-y-0.5 hover:shadow-card-hover hover:border-[#D8DAFA]",
           paddingClasses[padding],
           className
         )}
@@ -34,21 +36,21 @@ Card.displayName = 'Card';
 
 export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("pb-3 border-b border-[#E5E7EB] flex flex-col space-y-1", className)} {...props} />
+    <div ref={ref} className={cn("pb-3 border-b border-[#E8EAF0] flex flex-col space-y-1", className)} {...props} />
   )
 );
 CardHeader.displayName = 'CardHeader';
 
 export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-base font-semibold text-[#111827]", className)} {...props} />
+    <h3 ref={ref} className={cn("text-base font-bold font-heading text-[#111827]", className)} {...props} />
   )
 );
 CardTitle.displayName = 'CardTitle';
 
 export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-[#6B7280]", className)} {...props} />
+    <p ref={ref} className={cn("text-xs text-[#6B7280]", className)} {...props} />
   )
 );
 CardDescription.displayName = 'CardDescription';
