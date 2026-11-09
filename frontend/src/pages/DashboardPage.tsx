@@ -31,8 +31,10 @@ import { ChartTooltip } from '@/components/ui/ChartTooltip';
 import { GettingStartedChecklist } from '@/components/onboarding/GettingStartedChecklist';
 import { PageGuidance } from '@/components/onboarding/PageGuidance';
 import { NextStepStrip } from '@/components/onboarding/NextStepStrip';
-import { api, RunwayData, DashboardSummaryData, ForecastData } from '@/api/client';
+import { RecommendationsList } from '@/components/recommendations/RecommendationsList';
+import { api, RunwayData, DashboardSummaryData, ForecastData, ActionCardItem } from '@/api/client';
 import { formatINR, formatCompactINR } from '@/utils/format';
+import { Coins } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -51,6 +53,11 @@ export const DashboardPage: React.FC = () => {
   const { data: forecastData, isLoading: forecastLoading } = useQuery<ForecastData>({
     queryKey: ['forecast', 30],
     queryFn: () => api.getForecast(30),
+  });
+
+  const { data: recommendations = [] } = useQuery<ActionCardItem[]>({
+    queryKey: ['recommendations'],
+    queryFn: () => api.getRecommendations(),
   });
 
   // Prepare chart series from live forecast
@@ -276,6 +283,36 @@ export const DashboardPage: React.FC = () => {
           badgeTheme="danger"
         />
       </div>
+
+      {/* ── IMPACT CARD: LATE PAYMENT BORROWING COST ───────────────────── */}
+      <div className="p-4 rounded-[12px] bg-white border border-[#E8EAF0] shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#FFF4DB] text-[#B45309] flex items-center justify-center shrink-0">
+            <Coins className="w-5 h-5 text-[#B45309]" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-[#111827]">
+              Late payments cost you about{' '}
+              <span className="text-[#B42318]">
+                {formatINR(summary?.late_payment_borrowing_cost || 129282)}
+              </span>{' '}
+              in extra borrowing this quarter
+            </h4>
+            <p className="text-xs text-[#6B7280]">
+              Computed from customer average delay days × an assumed 12% annual interest on working capital credit line.
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/reminders"
+          className="text-xs font-semibold text-[#3F3DDB] hover:underline flex items-center gap-1 shrink-0"
+        >
+          Send WhatsApp reminders <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
+      {/* ── RECOMMENDED ACTIONS TO PROTECT CASH ────────────────────────── */}
+      <RecommendationsList recommendations={recommendations} maxItems={2} />
 
       {/* ── MAIN CONTENT: CHART & NEEDS ATTENTION ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

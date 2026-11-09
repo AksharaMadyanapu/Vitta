@@ -173,6 +173,8 @@ class DashboardSummary(BaseModel):
     total_payables_30d: float
     overdue_receivables: float
     overdue_receivables_count: int
+    late_payment_borrowing_cost: float = 0.0
+    borrowing_rate_annual: float = 0.12
     attention_items: List[AttentionItem]
     # Accounts breakdown
     accounts: List[BankAccountSchema]

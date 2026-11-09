@@ -146,12 +146,37 @@ def get_summary(db: Session = Depends(get_db)):
             severity="safe",
         ))
 
+    # Borrowing cost from late payments this quarter (assumes 12% annual interest on working capital credit line)
+    quarter_start = today - timedelta(days=90)
+    paid_recent = (
+        db.query(Invoice)
+        .filter(
+            Invoice.invoice_type == "receivable",
+            Invoice.paid_date != None,
+            Invoice.paid_date >= quarter_start,
+            Invoice.due_date != None,
+        )
+        .all()
+    )
+    total_interest_cost = 0.0
+    for inv in paid_recent:
+        delay = (inv.paid_date - inv.due_date).days
+        if delay > 0:
+            total_interest_cost += inv.amount * (delay / 365.0) * 0.12
+
+    for inv in overdue_recv:
+        days_late = (today - inv.due_date).days
+        if days_late > 0:
+            total_interest_cost += inv.amount * (days_late / 365.0) * 0.12
+
     return DashboardSummary(
         total_bank_balance=total_balance,
         total_receivables_30d=recv_30d,
         total_payables_30d=payables_30d,
         overdue_receivables=overdue_amount,
         overdue_receivables_count=len(overdue_recv),
+        late_payment_borrowing_cost=round(total_interest_cost, 0),
+        borrowing_rate_annual=0.12,
         attention_items=attention_items[:5],
         accounts=[BankAccountSchema.model_validate(a) for a in accounts],
     )

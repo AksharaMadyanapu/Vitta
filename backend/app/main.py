@@ -45,6 +45,10 @@ from .routers.transactions import router as transactions_router
 from .routers.accounts import router as accounts_router
 from .routers.forecast_router import router as forecast_router
 from .routers.summary import router as summary_router
+from .routers.recommendations import router as recommendations_router
+from .routers.copilot import router as copilot_router
+from .routers.risk_assessment import router as risk_router
+from .routers.reminders_router import router as reminders_router
 
 app.include_router(parties_router)
 app.include_router(invoices_router)
@@ -52,6 +56,10 @@ app.include_router(transactions_router)
 app.include_router(accounts_router)
 app.include_router(forecast_router)
 app.include_router(summary_router)
+app.include_router(recommendations_router)
+app.include_router(copilot_router)
+app.include_router(risk_router)
+app.include_router(reminders_router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

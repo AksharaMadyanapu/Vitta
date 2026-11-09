@@ -6,6 +6,7 @@ import { TopBar } from './TopBar';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { GuidedTour } from '@/components/onboarding/GuidedTour';
 import { HelpDrawer } from '@/components/onboarding/HelpDrawer';
+import { RunwayCopilot } from '@/components/copilot/RunwayCopilot';
 
 export const AppShell: React.FC = () => {
   const location = useLocation();
@@ -16,6 +17,9 @@ export const AppShell: React.FC = () => {
       <WelcomeModal />
       <GuidedTour />
       <HelpDrawer />
+
+      {/* Floating Copilot Assistant */}
+      <RunwayCopilot />
 
       {/* Sidebar */}
       <Sidebar />

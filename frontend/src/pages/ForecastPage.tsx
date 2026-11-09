@@ -34,7 +34,8 @@ import { ChartTooltip } from '@/components/ui/ChartTooltip';
 import { PageGuidance } from '@/components/onboarding/PageGuidance';
 import { InfoTooltip } from '@/components/onboarding/InfoTooltip';
 import { NextStepStrip } from '@/components/onboarding/NextStepStrip';
-import { api, ForecastData, OverrideItem, BacktestData } from '@/api/client';
+import { RecommendationsList } from '@/components/recommendations/RecommendationsList';
+import { api, ForecastData, OverrideItem, BacktestData, ActionCardItem } from '@/api/client';
 import { formatINR, formatCompactINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
 
@@ -61,6 +62,12 @@ export const ForecastPage: React.FC = () => {
   const { data: backtestData, isLoading: backtestLoading } = useQuery<BacktestData>({
     queryKey: ['backtest', 21],
     queryFn: () => api.getBacktest(21),
+  });
+
+  // Recommendations query
+  const { data: recommendations = [] } = useQuery<ActionCardItem[]>({
+    queryKey: ['recommendations'],
+    queryFn: () => api.getRecommendations(),
   });
 
   // Active data is overridden if any slider is moved
@@ -600,6 +607,22 @@ export const ForecastPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* ── RECOMMENDED ACTIONS CARDS ─────────────────────────────────── */}
+      <RecommendationsList
+        recommendations={recommendations}
+        maxItems={4}
+        onTakeAction={(item) => {
+          if (item.id === 'act-chase-sai') {
+            setSaiEarlierDays(15);
+          } else if (item.id === 'act-discount-sai') {
+            setCollectSaiThisWeek(true);
+          } else if (item.id === 'act-delay-tata') {
+            setTataDelayDays(15);
+          }
+          success('Lever applied to simulation', `Updated forecast with: ${item.title}`);
+        }}
+      />
 
       {/* ── TOP 5 RISK DRIVERS LIST ─────────────────────────────────────── */}
       <Card>

@@ -42,6 +42,8 @@ export interface DashboardSummaryData {
   total_payables_30d: number;
   overdue_receivables: number;
   overdue_receivables_count: number;
+  late_payment_borrowing_cost: number;
+  borrowing_rate_annual: number;
   attention_items: AttentionItem[];
   accounts: BankAccountItem[];
 }
@@ -99,6 +101,101 @@ export interface BacktestData {
   elapsed_ms: number;
 }
 
+export interface ActionCardItem {
+  id: string;
+  title: string;
+  why: string;
+  impact: string;
+  before_prob: number;
+  after_prob: number;
+  before_runway: number;
+  after_runway: number;
+  cost: number;
+  cash_gain: number;
+  effort: 'Low' | 'Medium' | 'High';
+  category: 'receivable' | 'payable' | 'expense';
+  badge: string;
+  related_party?: string;
+  related_amount?: number;
+  applied?: boolean;
+}
+
+export interface SourceChip {
+  label: string;
+  value: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  sources: SourceChip[];
+  suggested_actions?: string[];
+}
+
+export interface AssessRequest {
+  type: 'purchase' | 'sale' | 'expense';
+  party: string;
+  amount: number;
+  date: string;
+  payment_terms: number;
+}
+
+export interface AlternativeOption {
+  id: string;
+  title: string;
+  description: string;
+  shortfall_prob: number;
+  lowest_balance: number;
+  verdict: 'safe' | 'caution' | 'high_risk';
+  extra_items: any[];
+}
+
+export interface AssessResponse {
+  verdict: 'safe' | 'caution' | 'high_risk';
+  explanation: string;
+  before_prob: number;
+  after_prob: number;
+  before_lowest: number;
+  after_lowest: number;
+  lowest_date: string;
+  days: string[];
+  before_curve: number[];
+  after_curve: number[];
+  alternatives: AlternativeOption[];
+}
+
+export interface ConfirmRequest {
+  type: string;
+  party: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  alternative_id?: string;
+}
+
+export interface ReminderItem {
+  id: string;
+  invoice_id: number;
+  invoice_number: string;
+  party_id: number;
+  party_name: string;
+  contact_person?: string;
+  phone?: string;
+  email?: string;
+  amount: number;
+  amount_formatted: string;
+  due_date: string;
+  days_left: number;
+  status: 'overdue' | 'due_soon' | 'upcoming';
+  status_label: string;
+  messages: {
+    en: string;
+    hi: string;
+    te: string;
+  };
+  whatsapp_url: string;
+  last_sent_at?: string;
+}
+
 const API_BASE = '/api';
 
 export const api = {
@@ -144,10 +241,61 @@ export const api = {
     return res.json();
   },
 
+  getRecommendations: async (): Promise<ActionCardItem[]> => {
+    const res = await fetch(`${API_BASE}/recommendations`);
+    if (!res.ok) throw new Error('Failed to fetch recommendations');
+    return res.json();
+  },
+
+  chatCopilot: async (message: string, history?: any[]): Promise<ChatResponse> => {
+    const res = await fetch(`${API_BASE}/copilot/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history }),
+    });
+    if (!res.ok) throw new Error('Failed to contact Copilot');
+    return res.json();
+  },
+
+  assessPurchase: async (data: AssessRequest): Promise<AssessResponse> => {
+    const res = await fetch(`${API_BASE}/risk/assess`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to assess purchase risk');
+    return res.json();
+  },
+
+  confirmPurchase: async (data: ConfirmRequest): Promise<any> => {
+    const res = await fetch(`${API_BASE}/risk/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to confirm transaction');
+    return res.json();
+  },
+
+  getReminders: async (): Promise<ReminderItem[]> => {
+    const res = await fetch(`${API_BASE}/reminders`);
+    if (!res.ok) throw new Error('Failed to fetch reminders');
+    return res.json();
+  },
+
+  sendReminder: async (invoice_id: number, channel: string = 'whatsapp', language: string = 'en'): Promise<any> => {
+    const res = await fetch(`${API_BASE}/reminders/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice_id, channel, language }),
+    });
+    if (!res.ok) throw new Error('Failed to log reminder');
+    return res.json();
+  },
+
   reseedDatabase: async (): Promise<{ ok: boolean; message: string }> => {
     const res = await fetch(`${API_BASE}/admin/reseed`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to reseed database');
     return res.json();
   },
 };
-
