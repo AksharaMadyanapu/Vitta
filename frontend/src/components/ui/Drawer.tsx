@@ -10,8 +10,7 @@ export interface DrawerProps {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  position?: 'right' | 'left';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export const Drawer: React.FC<DrawerProps> = ({
@@ -21,7 +20,6 @@ export const Drawer: React.FC<DrawerProps> = ({
   description,
   children,
   footer,
-  position = 'right',
   size = 'md',
 }) => {
   useEffect(() => {
@@ -47,70 +45,57 @@ export const Drawer: React.FC<DrawerProps> = ({
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-lg',
-    xl: 'max-w-xl',
-  };
-
-  const slideVariants = {
-    initial: { x: position === 'right' ? '100%' : '-100%' },
-    animate: { x: 0 },
-    exit: { x: position === 'right' ? '100%' : '-100%' },
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
+          {/* Backdrop: 150ms */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 bg-[#0B1220]/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#111827]/40"
           />
 
-          <div
-            className={cn(
-              "fixed inset-y-0 flex max-w-full",
-              position === 'right' ? "right-0 pl-10" : "left-0 pr-10"
-            )}
-          >
+          <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
             <motion.div
-              variants={slideVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               className={cn(
-                "w-screen bg-surface border-l border-border shadow-2xl flex flex-col justify-between",
+                "w-screen bg-white border-l border-[#E5E7EB] shadow-lg flex flex-col justify-between",
                 sizeClasses[size]
               )}
             >
               {/* Header */}
-              <div className="flex items-start justify-between p-6 border-b border-border/60">
+              <div className="flex items-start justify-between p-5 border-b border-[#E5E7EB]">
                 <div>
                   {title && (
-                    <h3 className="text-lg font-semibold text-primary">{title}</h3>
+                    <h3 className="text-base font-semibold text-[#111827]">{title}</h3>
                   )}
                   {description && (
-                    <p className="text-sm text-primary-muted mt-1">{description}</p>
+                    <p className="text-sm text-[#6B7280] mt-0.5">{description}</p>
                   )}
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-primary-muted hover:text-primary hover:bg-elevated transition-colors"
+                  className="p-1 rounded-md text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Scrollable Content */}
-              <div className="p-6 overflow-y-auto flex-1">{children}</div>
+              <div className="p-5 overflow-y-auto flex-1">{children}</div>
 
               {/* Footer */}
               {footer && (
-                <div className="p-6 border-t border-border/60 bg-surface/50 flex items-center justify-end gap-3">
+                <div className="p-4 border-t border-[#E5E7EB] bg-[#F9FAFB] flex items-center justify-end gap-2.5">
                   {footer}
                 </div>
               )}
@@ -121,4 +106,3 @@ export const Drawer: React.FC<DrawerProps> = ({
     </AnimatePresence>
   );
 };
-

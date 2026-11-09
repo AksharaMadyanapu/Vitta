@@ -6,14 +6,17 @@ import { AppShell } from '@/components/layout/AppShell';
 
 import { DashboardPage } from '@/pages/DashboardPage';
 import { BankingPage } from '@/pages/BankingPage';
-import { PartiesPage } from '@/pages/PartiesPage';
 import { InvoicesPage } from '@/pages/InvoicesPage';
+import { CustomersPage } from '@/pages/CustomersPage';
+import { SuppliersPage } from '@/pages/SuppliersPage';
+import { PartiesPage } from '@/pages/PartiesPage';
 import { RemindersPage } from '@/pages/RemindersPage';
-import { CustomerAnalyticsPage } from '@/pages/CustomerAnalyticsPage';
 import { ForecastPage } from '@/pages/ForecastPage';
-import { RiskAlertsPage } from '@/pages/RiskAlertsPage';
 import { PreTransactionPage } from '@/pages/PreTransactionPage';
+import { CustomerAnalyticsPage } from '@/pages/CustomerAnalyticsPage';
+import { RiskAlertsPage } from '@/pages/RiskAlertsPage';
 import { BusinessAnalyticsPage } from '@/pages/BusinessAnalyticsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,15 +36,18 @@ export const App: React.FC = () => {
             <Route path="/" element={<AppShell />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="banking" element={<BankingPage />} />
-              <Route path="parties" element={<PartiesPage />} />
               <Route path="invoices" element={<InvoicesPage />} />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route path="suppliers" element={<SuppliersPage />} />
+              <Route path="parties" element={<PartiesPage />} />
+              <Route path="banking" element={<BankingPage />} />
+              <Route path="forecast" element={<ForecastPage />} />
+              <Route path="pre-transaction" element={<PreTransactionPage />} />
               <Route path="reminders" element={<RemindersPage />} />
               <Route path="customer-analytics" element={<CustomerAnalyticsPage />} />
-              <Route path="forecast" element={<ForecastPage />} />
               <Route path="risk-alerts" element={<RiskAlertsPage />} />
-              <Route path="pre-transaction" element={<PreTransactionPage />} />
               <Route path="business-analytics" element={<BusinessAnalyticsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Routes>
@@ -50,4 +56,3 @@ export const App: React.FC = () => {
     </QueryClientProvider>
   );
 };
-

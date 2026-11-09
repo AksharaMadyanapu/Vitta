@@ -13,13 +13,20 @@ Deccan Precision Components Pvt Ltd, Hyderabad. Manufactures automotive parts. O
 - Frontend dev server proxies /api to the backend (port 8000). Frontend runs on port 5173.
 
 ## Design system
-- Dark navy fintech SaaS look. Background #0B1220, surface #111A2E, elevated #16213A, border #22304D.
-- Accents: blue #3B82F6, teal #14B8A6, green #22C55E, amber #F59E0B, red #EF4444.
-- Text: #E6ECF8 primary, #8FA0C0 secondary. Font: Inter. Use tabular numbers for all money.
-- Cards: rounded-2xl, subtle border, soft glow on hover, generous spacing. Left sidebar navigation, top bar with search, notification bell and company name.
-- Every page needs: loading skeletons, empty states, error states, smooth page transitions, count-up animations on key numbers, responsive layout.
-- Charts use the accent palette, gradient fills, custom dark tooltips.
-- Risk colour language everywhere: green = safe, amber = caution, red = high risk.
+- Light theme only. Calm, clean, trusted finance SaaS look (reference: Zoho Books, Stripe Dashboard, Mercury).
+- Background #F7F8FA, surface/cards white (#FFFFFF), 1px border #E5E7EB, card radius 10px, no heavy shadows (faint shadow-sm at most).
+- Text: #111827 primary, #6B7280 secondary. Font: Inter. Tabular numbers for all money values, right-aligned in tables.
+- ONE accent colour for buttons, links, and active states: #2548C9.
+- Status colours are soft and muted pills: green text #15803D on #ECFDF3, amber text #B45309 on #FFFAEB, red text #B42318 on #FEF3F2.
+- No glow effects, gradients, glassmorphism, neon colours, decorative blobs, count-up number animations, or emoji.
+- Motion: 150–200 ms fades and hover colour changes only.
+- Typography scale: page title 24px/600, section heading 16px/600, body 14px, caption 12px secondary. Whitespace: 24px between sections, 20px inside cards.
+- Tables: 48px rows, no zebra stripes, light hover row, sticky header, clear column alignment.
+- Charts: single-colour lines, light grey gridlines, thin axes, plain white tooltips with 1px border, no gradients. Accent colour for main series, grey for comparison.
+- Buttons: one primary button per page (solid #2548C9), secondary buttons white with border, sentence case labels.
+- Icons: small 18px stroke style (lucide-react), used sparingly where helpful.
+- Plain language: simple, friendly English without jargon. Sentence case everywhere.
+- All future UI work must follow this design system and use plain-language copy.
 
 ## Features
 1 Dashboard, 2 Bank and transactions (manual, CSV upload, simulated bank connection), 3 Customers and suppliers, 4 Invoices (create, status tracking, PDF/image upload with data extraction), 5 Reminders (7 days before due) and calendar, 6 Customer payment behaviour analytics, 7 Cash-flow forecast (14/30/60 days, shortage date, top 5 contributing transactions), 8 Risk alerts and recommendations, 9 Pre-transaction risk assessment, 10 Business performance analytics.

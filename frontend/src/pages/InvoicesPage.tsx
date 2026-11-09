@@ -1,21 +1,11 @@
 import React, { useState } from 'react';
-import {
-  FileText,
-  Upload,
-  Plus,
-  Eye,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Sparkles,
-} from 'lucide-react';
+import { Plus, Upload, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { DataTable, Column } from '@/components/ui/DataTable';
-import { SkeletonStatCard, SkeletonTable } from '@/components/ui/Skeleton';
 import { Modal } from '@/components/ui/Modal';
 import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
@@ -23,114 +13,99 @@ import { useToast } from '@/components/ui/Toast';
 interface InvoiceItem {
   id: string;
   invoiceNo: string;
-  counterparty: string;
+  party: string;
   type: 'receivable' | 'payable';
   amount: number;
   dueDate: string;
-  status: 'paid' | 'unpaid' | 'overdue';
-  extractedViaOCR: boolean;
+  status: 'paid' | 'waiting' | 'overdue';
 }
 
 export const InvoicesPage: React.FC = () => {
-  const [showSkeleton, setShowSkeleton] = useState(false);
-  const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'receivable' | 'payable'>('all');
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const { success } = useToast();
 
   const mockInvoices: InvoiceItem[] = [
     {
       id: 'inv-1',
-      invoiceNo: 'INV/2026/0491',
-      counterparty: 'Kalyani Powertrain Ltd',
+      invoiceNo: 'INV-2026-0491',
+      party: 'Kalyani Powertrain Ltd',
       type: 'receivable',
       amount: 640000,
-      dueDate: '2026-11-16',
-      status: 'unpaid',
-      extractedViaOCR: true,
+      dueDate: '16 Nov 2026',
+      status: 'waiting',
     },
     {
       id: 'inv-2',
-      invoiceNo: 'INV/2026/0478',
-      counterparty: 'Varroc Engineering Components',
+      invoiceNo: 'INV-2026-0478',
+      party: 'Varroc Engineering Components',
       type: 'receivable',
       amount: 1120000,
-      dueDate: '2026-11-04',
+      dueDate: '4 Nov 2026',
       status: 'overdue',
-      extractedViaOCR: false,
     },
     {
       id: 'inv-3',
-      invoiceNo: 'PO/TS/8812',
-      counterparty: 'Tata Steel BSL Raw Material Division',
+      invoiceNo: 'PO-TS-8812',
+      party: 'Tata Steel BSL Ltd',
       type: 'payable',
       amount: 480000,
-      dueDate: '2026-11-20',
-      status: 'unpaid',
-      extractedViaOCR: true,
+      dueDate: '20 Nov 2026',
+      status: 'waiting',
     },
     {
       id: 'inv-4',
-      invoiceNo: 'INV/2026/0430',
-      counterparty: 'Sundaram Fasteners Auto Components',
+      invoiceNo: 'INV-2026-0430',
+      party: 'Sundaram Fasteners Ltd',
       type: 'receivable',
       amount: 750000,
-      dueDate: '2026-10-28',
+      dueDate: '28 Oct 2026',
       status: 'paid',
-      extractedViaOCR: true,
     },
     {
       id: 'inv-5',
-      invoiceNo: 'PO/HE/9102',
-      counterparty: 'Hindalco Industrial Extrusions',
+      invoiceNo: 'PO-HE-9102',
+      party: 'Hindalco Extrusions',
       type: 'payable',
       amount: 220000,
-      dueDate: '2026-11-25',
-      status: 'unpaid',
-      extractedViaOCR: false,
+      dueDate: '25 Nov 2026',
+      status: 'waiting',
     },
   ];
+
+  const filtered = mockInvoices.filter((inv) => {
+    if (activeTab === 'receivable') return inv.type === 'receivable';
+    if (activeTab === 'payable') return inv.type === 'payable';
+    return true;
+  });
 
   const columns: Column<InvoiceItem>[] = [
     {
       key: 'invoiceNo',
-      header: 'Invoice #',
+      header: 'Invoice number',
       sortable: true,
       render: (inv) => (
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary-muted shrink-0" />
-          <div>
-            <span className="font-semibold text-primary">{inv.invoiceNo}</span>
-            {inv.extractedViaOCR && (
-              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent-teal/15 text-accent-teal font-medium border border-accent-teal/30">
-                PDF Extracted
-              </span>
-            )}
-          </div>
+        <span className="font-medium text-[#111827]">{inv.invoiceNo}</span>
+      ),
+    },
+    {
+      key: 'party',
+      header: 'Customer or supplier',
+      sortable: true,
+      render: (inv) => (
+        <div>
+          <span className="text-[#111827] font-medium">{inv.party}</span>
+          <p className="text-xs text-[#6B7280]">
+            {inv.type === 'receivable' ? 'Money coming in' : 'Money going out'}
+          </p>
         </div>
       ),
     },
     {
-      key: 'counterparty',
-      header: 'Party',
-      sortable: true,
-    },
-    {
-      key: 'type',
-      header: 'Type',
-      align: 'center',
-      render: (inv) => (
-        <Badge
-          variant={inv.type === 'receivable' ? 'teal' : 'neutral'}
-          size="sm"
-        >
-          {inv.type === 'receivable' ? 'Receivable (Inflow)' : 'Payable (Outflow)'}
-        </Badge>
-      ),
-    },
-    {
       key: 'dueDate',
-      header: 'Due Date',
+      header: 'Due date',
       sortable: true,
-      className: 'font-mono text-xs text-primary-muted',
+      className: 'text-xs text-[#6B7280]',
     },
     {
       key: 'amount',
@@ -138,13 +113,7 @@ export const InvoicesPage: React.FC = () => {
       align: 'right',
       sortable: true,
       render: (inv) => (
-        <span
-          className={
-            inv.type === 'receivable'
-              ? 'font-semibold text-risk-safe'
-              : 'font-semibold text-primary'
-          }
-        >
+        <span className="font-medium text-[#111827] tabular-nums">
           {formatINR(inv.amount)}
         </span>
       ),
@@ -155,17 +124,13 @@ export const InvoicesPage: React.FC = () => {
       align: 'center',
       sortable: true,
       render: (inv) => {
-        const variant =
-          inv.status === 'paid'
-            ? 'safe'
-            : inv.status === 'overdue'
-            ? 'high'
-            : 'caution';
-        return (
-          <Badge variant={variant} size="sm" dot>
-            {inv.status.toUpperCase()}
-          </Badge>
-        );
+        if (inv.status === 'paid') {
+          return <Badge variant="safe">Paid</Badge>;
+        }
+        if (inv.status === 'overdue') {
+          return <Badge variant="danger">Overdue</Badge>;
+        }
+        return <Badge variant="caution">Waiting for payment</Badge>;
       },
     },
   ];
@@ -173,128 +138,125 @@ export const InvoicesPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Invoices & Extraction"
-        description="Track all open customer receivables, supplier payables, and upload PDF invoices for automated field extraction."
-        badge={
-          <Badge variant="blue" size="sm">
-            5 Invoices Active
-          </Badge>
+        title="Invoices"
+        description="Track money coming in from customers and bills you need to pay to suppliers."
+        action={
+          <Button
+            variant="primary"
+            onClick={() => success('New invoice', 'Opening invoice editor...')}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Create invoice
+          </Button>
         }
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSkeleton(!showSkeleton)}
-            >
-              {showSkeleton ? 'View Content' : 'Preview Skeletons'}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<Upload className="w-4 h-4" />}
-              onClick={() => setOcrModalOpen(true)}
-            >
-              Upload PDF / OCR
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus className="w-4 h-4" />}
-              onClick={() => success('Create Invoice', 'Opening new invoice editor...')}
-            >
-              Create Invoice
-            </Button>
-          </div>
+        secondaryAction={
+          <Button
+            variant="secondary"
+            onClick={() => setUploadModalOpen(true)}
+            leftIcon={<Upload className="w-4 h-4" />}
+          >
+            Upload invoice PDF
+          </Button>
         }
       />
 
-      {showSkeleton ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <SkeletonStatCard />
-            <SkeletonStatCard />
-            <SkeletonStatCard />
-          </div>
-          <SkeletonTable rows={5} />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          title="Money waiting to come in"
+          value={1760000}
+          subtitle="2 customer invoices"
+        />
+        <StatCard
+          title="Overdue from customers"
+          value={1120000}
+          subtitle="1 invoice overdue"
+          statusVariant="danger"
+        />
+        <StatCard
+          title="Bills you need to pay"
+          value={700000}
+          subtitle="2 supplier bills"
+        />
+      </div>
+
+      {/* Filter Tabs & Table Card */}
+      <Card>
+        <div className="flex items-center gap-1 border-b border-[#E5E7EB] pb-3 mb-4 text-sm font-medium">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1.5 rounded-lg transition-colors ${
+              activeTab === 'all'
+                ? 'bg-[#EEF2FF] text-[#2548C9]'
+                : 'text-[#6B7280] hover:text-[#111827]'
+            }`}
+          >
+            All invoices ({mockInvoices.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('receivable')}
+            className={`px-3 py-1.5 rounded-lg transition-colors ${
+              activeTab === 'receivable'
+                ? 'bg-[#EEF2FF] text-[#2548C9]'
+                : 'text-[#6B7280] hover:text-[#111827]'
+            }`}
+          >
+            Money coming in (3)
+          </button>
+          <button
+            onClick={() => setActiveTab('payable')}
+            className={`px-3 py-1.5 rounded-lg transition-colors ${
+              activeTab === 'payable'
+                ? 'bg-[#EEF2FF] text-[#2548C9]'
+                : 'text-[#6B7280] hover:text-[#111827]'
+            }`}
+          >
+            Money to pay (2)
+          </button>
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard
-              title="Open Receivables"
-              value={2510000}
-              change={6.4}
-              changeLabel="from 4 customers"
-              icon={Clock}
-              variant="teal"
-              subtitle="Expected within next 30 days"
-            />
-            <StatCard
-              title="Open Payables"
-              value={700000}
-              change={-2.1}
-              changeLabel="to 2 suppliers"
-              icon={AlertCircle}
-              variant="caution"
-              subtitle="Due within next 30 days"
-            />
-            <StatCard
-              title="Overdue Receivables"
-              value={1120000}
-              change={12.0}
-              changeLabel="Varroc Engineering"
-              icon={AlertCircle}
-              variant="high"
-              subtitle="5 days past due date"
-            />
-          </div>
 
-          <Card className="p-6">
-            <DataTable
-              data={mockInvoices}
-              columns={columns}
-              searchPlaceholder="Search invoices by number or party..."
-              pageSize={10}
-            />
-          </Card>
-        </>
-      )}
+        <DataTable
+          data={filtered}
+          columns={columns}
+          searchPlaceholder="Search by invoice number or party..."
+          searchKey={(item) => `${item.invoiceNo} ${item.party}`}
+          pageSize={10}
+        />
+      </Card>
 
-      {/* PDF Upload Modal */}
+      {/* Upload Invoice PDF Modal */}
       <Modal
-        isOpen={ocrModalOpen}
-        onClose={() => setOcrModalOpen(false)}
-        title="Upload Invoice PDF or Image"
-        description="Runway uses pdfplumber to extract invoice number, GSTIN, due date, and amounts automatically."
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        title="Upload invoice"
+        description="We will read the party name, amount, GSTIN and due date from the PDF automatically."
         footer={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => setOcrModalOpen(false)}>
+            <Button variant="secondary" onClick={() => setUploadModalOpen(false)}>
               Cancel
             </Button>
             <Button
-              variant="teal"
+              variant="primary"
               onClick={() => {
-                setOcrModalOpen(false);
-                success('PDF Extracted', 'Extracted Invoice #DP-9921 for ₹3,45,000 from Kalyani.');
+                setUploadModalOpen(false);
+                success('Invoice read', 'Saved invoice for ₹3,45,000 from Kalyani Powertrain.');
               }}
             >
-              Extract & Add
+              Read and save
             </Button>
           </div>
         }
       >
-        <div className="p-8 border-2 border-dashed border-border rounded-xl text-center hover:border-accent-teal/50 transition-colors cursor-pointer bg-elevated/40">
-          <Upload className="w-10 h-10 text-accent-teal mx-auto mb-2" />
-          <p className="text-sm font-semibold text-primary">
-            Click to upload or drag & drop invoice PDF
+        <div className="p-6 border border-dashed border-[#D1D5DB] rounded-[10px] text-center bg-[#F9FAFB]">
+          <FileText className="w-8 h-8 text-[#6B7280] mx-auto mb-2" />
+          <p className="text-sm font-medium text-[#111827]">
+            Drag and drop an invoice PDF or image here
           </p>
-          <p className="text-xs text-primary-muted mt-1">
-            Accepts PDF, JPG, PNG up to 10MB
+          <p className="text-xs text-[#6B7280] mt-1">
+            PDF, JPG or PNG up to 10MB
           </p>
         </div>
       </Modal>
     </div>
   );
 };
-

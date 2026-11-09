@@ -1,167 +1,121 @@
-import React, { useState } from 'react';
-import {
-  ShieldAlert,
-  AlertTriangle,
-  Lightbulb,
-  ArrowRight,
-  CheckCircle,
-  Clock,
-  Sparkles,
-} from 'lucide-react';
+import React from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { SkeletonTable } from '@/components/ui/Skeleton';
 import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
 
 export const RiskAlertsPage: React.FC = () => {
-  const [showSkeleton, setShowSkeleton] = useState(false);
-  const { success, info } = useToast();
+  const { success } = useToast();
 
   const alerts = [
     {
       id: 'alt-1',
-      severity: 'high' as const,
-      title: 'Potential Shortfall Window Detected around Day 22-25',
-      shortfallAmount: 480000,
-      cause: 'Simultaneous GST liability payment (₹3.8L) and raw material batch delivery from Tata Steel (₹4.8L) without adequate collection cushion.',
-      recommendations: [
-        'Request 50% early payment discount (2%) from Kalyani Powertrain Ltd on Inv #0491.',
-        'Negotiate a 10-day staggered dispatch on the Tata Steel raw material coils.',
-        'Draw down ₹2,50,000 temporarily from SBI Overdraft facility.',
+      severity: 'danger' as const,
+      statusLabel: 'Action recommended',
+      title: 'Cash shortage expected between 20–25 November',
+      deficit: 480000,
+      why: 'Your monthly GST tax payment (₹3.8L) and raw material bill to Tata Steel (₹4.8L) both fall due on 20 November, before Kalyani Powertrain is expected to clear their bill.',
+      actions: [
+        'Call Kalyani Powertrain to request an early payment or part-payment on Inv #0491.',
+        'Ask Tata Steel to split the ₹4.8L payment into two instalments 10 days apart.',
+        'Draw ₹2,50,000 from your SBI Overdraft limit to cover the 5-day gap.',
       ],
-      date: 'Projected for Nov 22-25',
+      timing: 'Expected 20 Nov',
     },
     {
       id: 'alt-2',
       severity: 'caution' as const,
-      title: 'Customer Payment Delay Drift: Varroc Engineering',
-      cause: 'Historical delay average drifted from 14 days to 24.5 days over the last 3 billing cycles, tying up ₹11,20,000 in working capital.',
-      recommendations: [
-        'Shift future purchase orders to 30% milestone advance before tool casting.',
-        'Trigger formal credit notice to Varroc finance desk with statement of account.',
+      statusLabel: 'Customer paying later',
+      title: 'Varroc Engineering payments are taking longer',
+      deficit: null,
+      why: 'Varroc Engineering used to pay in 14 days, but their last 3 bills took 24 days to clear. Currently ₹11,20,000 is waiting for payment.',
+      actions: [
+        'Ask for a 30% advance on upcoming machining orders.',
+        'Send an updated statement of account to their accounts manager.',
       ],
-      date: 'Active Trend',
+      timing: 'Active trend',
     },
     {
       id: 'alt-3',
       severity: 'safe' as const,
-      title: 'Working Capital Buffer Reconstitution',
-      cause: 'Sundaram Fasteners settled ₹7,50,000 on schedule, elevating cash reserve above 30-day baseline requirement.',
-      recommendations: [
-        'Maintain buffer for scheduled machinery loan EMI deduction on Nov 28.',
+      statusLabel: 'Resolved',
+      title: 'Sundaram Fasteners bill cleared on time',
+      deficit: null,
+      why: '₹7,50,000 received on schedule, giving you enough cushion for the machinery loan EMI on 28 November.',
+      actions: [
+        'No action needed. Keep this buffer for the loan payment on 28 Nov.',
       ],
-      date: 'Settled Yesterday',
+      timing: 'Cleared yesterday',
     },
   ];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Risk Alerts & Recommendations"
-        description="Root-cause diagnostic engine explaining projected shortfalls with proactive operational recommendations."
-        badge={
-          <Badge variant="high" dot pulse>
-            1 High Priority Alert
-          </Badge>
-        }
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSkeleton(!showSkeleton)}
-          >
-            {showSkeleton ? 'View Content' : 'Preview Skeletons'}
-          </Button>
-        }
+        title="Alerts and suggestions"
+        description="Plain-English explanations of projected cash shortages and practical steps to avoid them."
       />
 
-      {showSkeleton ? (
-        <SkeletonTable rows={4} />
-      ) : (
-        <div className="space-y-5">
-          {alerts.map((alert) => (
-            <Card
-              key={alert.id}
-              className={`p-6 border-l-4 ${
-                alert.severity === 'high'
-                  ? 'border-l-risk-high border-border'
-                  : alert.severity === 'caution'
-                  ? 'border-l-risk-caution border-border'
-                  : 'border-l-risk-safe border-border'
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
-                <div className="flex items-center gap-3">
-                  <Badge variant={alert.severity} size="md" dot>
-                    {alert.severity === 'high'
-                      ? 'High Shortfall Risk'
-                      : alert.severity === 'caution'
-                      ? 'Payment Drift Warning'
-                      : 'Positive Buffer'}
-                  </Badge>
-                  <h3 className="text-base font-bold text-primary">
-                    {alert.title}
-                  </h3>
-                </div>
-                <span className="text-xs font-mono text-primary-muted">
-                  {alert.date}
-                </span>
+      <div className="space-y-4">
+        {alerts.map((alert) => (
+          <Card key={alert.id} className="p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E5E7EB]">
+              <div className="flex items-center gap-2.5">
+                <Badge variant={alert.severity === 'danger' ? 'danger' : alert.severity === 'caution' ? 'caution' : 'safe'}>
+                  {alert.statusLabel}
+                </Badge>
+                <h3 className="text-base font-semibold text-[#111827]">
+                  {alert.title}
+                </h3>
               </div>
+              <span className="text-xs text-[#6B7280]">
+                {alert.timing}
+              </span>
+            </div>
 
-              {/* Cause Explanation */}
-              <div className="mt-4 p-4 rounded-xl bg-elevated/70 border border-border/60">
-                <div className="text-xs font-semibold text-primary-muted uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-accent-amber" />
-                  Underlying Root Cause:
-                </div>
-                <p className="text-sm text-primary leading-relaxed">
-                  {alert.cause}
+            {/* Why this happens */}
+            <div className="mt-3.5 space-y-1">
+              <span className="text-xs font-semibold text-[#374151] uppercase tracking-wider">
+                Why this happens:
+              </span>
+              <p className="text-sm text-[#4B5563] leading-relaxed">
+                {alert.why}
+              </p>
+              {alert.deficit && (
+                <p className="text-xs font-medium text-[#B42318] pt-1">
+                  Estimated shortfall: <strong>{formatINR(alert.deficit)}</strong>
                 </p>
-                {alert.shortfallAmount && (
-                  <div className="mt-2 text-xs font-medium text-risk-high-text">
-                    Projected Max Deficit:{' '}
-                    <strong className="font-mono text-sm">
-                      {formatINR(alert.shortfallAmount)}
-                    </strong>
-                  </div>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Recommended Action Checklist */}
-              <div className="mt-4 space-y-2">
-                <div className="text-xs font-semibold text-primary-muted uppercase tracking-wider flex items-center gap-1.5">
-                  <Lightbulb className="w-3.5 h-3.5 text-accent-teal" />
-                  Recommended Preventive Steps:
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                  {alert.recommendations.map((rec, i) => (
-                    <div
-                      key={i}
-                      className="p-3 rounded-lg bg-surface border border-border flex items-start justify-between gap-3 group hover:border-accent-blue/40 transition-colors"
+            {/* What you can do */}
+            <div className="mt-4 pt-3 border-t border-[#F3F4F6] space-y-2">
+              <span className="text-xs font-semibold text-[#374151] uppercase tracking-wider">
+                What you can do:
+              </span>
+              <div className="space-y-2 mt-1">
+                {alert.actions.map((act, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] text-xs text-[#111827]"
+                  >
+                    <span className="leading-relaxed flex-1">{act}</span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => success('Action started', 'Recorded this task in your action list.')}
                     >
-                      <p className="text-xs text-primary leading-relaxed flex-1">
-                        {rec}
-                      </p>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="text-[11px] py-1 px-2.5 shrink-0"
-                        onClick={() => success('Recommendation Initiated', 'Workflow dispatched to accounting team.')}
-                      >
-                        Execute
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                      Take action
+                    </Button>
+                  </div>
+                ))}
               </div>
-            </Card>
-          ))}
-        </div>
-      )}
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };
-

@@ -1,157 +1,128 @@
-import React, { useState } from 'react';
-import {
-  TrendingUp,
-  Clock,
-  Sparkles,
-  AlertTriangle,
-  ArrowRight,
-} from 'lucide-react';
+import React from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
 import { DataTable, Column } from '@/components/ui/DataTable';
-import { SkeletonStatCard, SkeletonChart, SkeletonTable } from '@/components/ui/Skeleton';
 import { formatINR } from '@/utils/format';
 
-interface CustomerDelayMetric {
+interface CustomerMetric {
   id: string;
   name: string;
-  paidCount: number;
+  terms: number;
+  paidInvoices: number;
   avgDelay: number;
-  medianDelay: number;
-  maxDelay: number;
-  blendWithGlobal: boolean;
-  reliabilityScore: number;
-  status: 'safe' | 'caution' | 'high';
+  longestDelay: number;
+  openBalance: number;
 }
 
 export const CustomerAnalyticsPage: React.FC = () => {
-  const [showSkeleton, setShowSkeleton] = useState(false);
-
-  const customerData: CustomerDelayMetric[] = [
+  const customerData: CustomerMetric[] = [
     {
       id: 'c-1',
-      name: 'Sundaram Fasteners Auto Components',
-      paidCount: 18,
-      avgDelay: 2.1,
-      medianDelay: 1.0,
-      maxDelay: 7,
-      blendWithGlobal: false,
-      reliabilityScore: 96,
-      status: 'safe',
+      name: 'Sundaram Fasteners Ltd',
+      terms: 45,
+      paidInvoices: 18,
+      avgDelay: 2,
+      longestDelay: 7,
+      openBalance: 840000,
     },
     {
       id: 'c-2',
       name: 'Kalyani Powertrain Ltd',
-      paidCount: 14,
-      avgDelay: 14.2,
-      medianDelay: 12.0,
-      maxDelay: 28,
-      blendWithGlobal: false,
-      reliabilityScore: 68,
-      status: 'caution',
+      terms: 30,
+      paidInvoices: 14,
+      avgDelay: 14,
+      longestDelay: 28,
+      openBalance: 640000,
     },
     {
       id: 'c-3',
       name: 'Varroc Engineering Components',
-      paidCount: 9,
-      avgDelay: 24.5,
-      medianDelay: 22.0,
-      maxDelay: 45,
-      blendWithGlobal: false,
-      reliabilityScore: 42,
-      status: 'high',
+      terms: 60,
+      paidInvoices: 9,
+      avgDelay: 24,
+      longestDelay: 45,
+      openBalance: 1120000,
     },
     {
       id: 'c-4',
-      name: 'Endurance Technologies Casting',
-      paidCount: 3,
-      avgDelay: 8.0,
-      medianDelay: 6.0,
-      maxDelay: 15,
-      blendWithGlobal: true, // fewer than 5 paid invoices, blend with global distribution
-      reliabilityScore: 75,
-      status: 'caution',
+      name: 'Endurance Technologies Ltd',
+      terms: 30,
+      paidInvoices: 3,
+      avgDelay: 8,
+      longestDelay: 15,
+      openBalance: 420000,
     },
     {
       id: 'c-5',
-      name: 'Motherson Sumi Wiring',
-      paidCount: 22,
-      avgDelay: 3.5,
-      medianDelay: 3.0,
-      maxDelay: 11,
-      blendWithGlobal: false,
-      reliabilityScore: 92,
-      status: 'safe',
+      name: 'Motherson Automotive Parts',
+      terms: 45,
+      paidInvoices: 22,
+      avgDelay: 3,
+      longestDelay: 11,
+      openBalance: 590000,
     },
   ];
 
-  const columns: Column<CustomerDelayMetric>[] = [
+  const columns: Column<CustomerMetric>[] = [
     {
       key: 'name',
-      header: 'Customer Name',
+      header: 'Customer',
       sortable: true,
       render: (c) => (
         <div>
-          <span className="font-semibold text-primary">{c.name}</span>
-          {c.blendWithGlobal && (
-            <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-accent-blue/15 text-accent-blue border border-accent-blue/30 font-medium">
-              &lt; 5 Invoices (Blended Prior)
-            </span>
-          )}
+          <span className="font-medium text-[#111827]">{c.name}</span>
+          <p className="text-xs text-[#6B7280]">{c.paidInvoices} past bills paid</p>
         </div>
       ),
     },
     {
-      key: 'paidCount',
-      header: 'Paid Invoices',
+      key: 'terms',
+      header: 'Agreed terms',
       align: 'center',
       sortable: true,
-      render: (c) => <span className="font-mono text-xs">{c.paidCount}</span>,
+      render: (c) => (
+        <span className="text-xs text-[#374151]">
+          {c.terms} days
+        </span>
+      ),
     },
     {
       key: 'avgDelay',
-      header: 'Mean Delay',
+      header: 'Average payment delay',
       align: 'center',
       sortable: true,
-      render: (c) => (
-        <span className="font-mono text-xs">+{c.avgDelay.toFixed(1)}d</span>
-      ),
+      render: (c) => {
+        if (c.avgDelay <= 3) {
+          return <Badge variant="safe">On time (+{c.avgDelay}d)</Badge>;
+        }
+        if (c.avgDelay > 15) {
+          return <Badge variant="danger">+{c.avgDelay} days late</Badge>;
+        }
+        return <Badge variant="caution">+{c.avgDelay} days late</Badge>;
+      },
     },
     {
-      key: 'medianDelay',
-      header: 'Median (p50)',
+      key: 'longestDelay',
+      header: 'Longest delay seen',
       align: 'center',
       sortable: true,
       render: (c) => (
-        <span className="font-mono text-xs font-semibold text-accent-teal">
-          +{c.medianDelay.toFixed(1)}d
+        <span className="text-xs text-[#6B7280]">
+          {c.longestDelay} days
         </span>
       ),
     },
     {
-      key: 'maxDelay',
-      header: 'Tail Risk (Max)',
-      align: 'center',
-      sortable: true,
-      render: (c) => (
-        <span className="font-mono text-xs text-risk-high">
-          +{c.maxDelay}d
-        </span>
-      ),
-    },
-    {
-      key: 'reliabilityScore',
-      header: 'Reliability Index',
+      key: 'openBalance',
+      header: 'Amount owed now',
       align: 'right',
       sortable: true,
       render: (c) => (
-        <div className="flex items-center justify-end gap-2">
-          <span className="font-mono text-xs font-bold">{c.reliabilityScore}/100</span>
-          <Badge variant={c.status} size="sm" dot />
-        </div>
+        <span className="font-medium text-[#111827] tabular-nums">
+          {formatINR(c.openBalance)}
+        </span>
       ),
     },
   ];
@@ -159,92 +130,52 @@ export const CustomerAnalyticsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Customer Payment Behaviour Analytics"
-        description="Empirical bootstrap distributions of past payment delays used by the Monte Carlo forecast engine to predict settlement timing."
-        badge={
-          <Badge variant="blue" size="sm">
-            Empirical Delay Distributions
-          </Badge>
-        }
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSkeleton(!showSkeleton)}
-          >
-            {showSkeleton ? 'View Content' : 'Preview Skeletons'}
-          </Button>
-        }
+        title="Payment behaviour"
+        description="See how quickly your customers clear their bills compared to agreed credit terms."
       />
 
-      {showSkeleton ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <SkeletonStatCard />
-            <SkeletonStatCard />
-            <SkeletonStatCard />
-          </div>
-          <SkeletonTable rows={5} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard
+          title="Average customer delay"
+          value={9}
+          isCurrency={false}
+          suffix=" days late"
+          subtitle="Better than industry average (18 days)"
+          statusVariant="safe"
+        />
+        <StatCard
+          title="Days to collect money (DSO)"
+          value={48}
+          isCurrency={false}
+          suffix=" days"
+          subtitle="From invoice to bank receipt"
+        />
+        <StatCard
+          title="Tied up in late customer payments"
+          value={1760000}
+          subtitle="Kalyani and Varroc"
+          statusVariant="caution"
+        />
+      </div>
+
+      <Card>
+        <div className="pb-3 border-b border-[#E5E7EB] mb-4">
+          <h3 className="text-base font-semibold text-[#111827]">
+            Customer payment track record
+          </h3>
+          <p className="text-xs text-[#6B7280] mt-0.5">
+            Based on 6 months of paid invoices for Deccan Precision Components
+          </p>
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard
-              title="Portfolio Average Delay"
-              value={9.4}
-              isCurrency={false}
-              suffix=" Days"
-              change={-1.2}
-              changeLabel="delay contraction"
-              icon={Clock}
-              variant="blue"
-              subtitle="Industry benchmark: 18.5 days"
-            />
-            <StatCard
-              title="DSO (Days Sales Outstanding)"
-              value={48}
-              isCurrency={false}
-              suffix=" Days"
-              change={-4.0}
-              changeLabel="cash collected faster"
-              icon={TrendingUp}
-              variant="safe"
-              subtitle="Target: under 45 days"
-            />
-            <StatCard
-              title="High-Delay Exposure"
-              value={1680000}
-              compactCurrency
-              change={8.5}
-              changeLabel="Varroc Engineering"
-              icon={AlertTriangle}
-              variant="high"
-              subtitle="Customers with avg delay > 20 days"
-            />
-          </div>
 
-          <Card className="p-6">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/50">
-              <div>
-                <h3 className="text-base font-semibold text-primary">
-                  Customer Empirical Delay Metrics
-                </h3>
-                <p className="text-xs text-primary-muted mt-0.5">
-                  Customers with &lt; 5 past payments are blended with the global manufacturing prior
-                </p>
-              </div>
-            </div>
-
-            <DataTable
-              data={customerData}
-              columns={columns}
-              searchPlaceholder="Search customer payment profiles..."
-              pageSize={10}
-            />
-          </Card>
-        </>
-      )}
+        <DataTable
+          data={customerData}
+          columns={columns}
+          searchPlaceholder="Search customer payment history..."
+          searchKey={(c) => c.name}
+          pageSize={10}
+        />
+      </Card>
     </div>
   );
 };
-

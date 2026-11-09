@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, AlertOctagon, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 export type ToastType = 'success' | 'warning' | 'error' | 'info';
@@ -63,52 +63,42 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [addToast]);
 
   const iconMap = {
-    success: <CheckCircle2 className="w-5 h-5 text-risk-safe-text shrink-0" />,
-    warning: <AlertTriangle className="w-5 h-5 text-risk-caution-text shrink-0" />,
-    error: <AlertOctagon className="w-5 h-5 text-risk-high-text shrink-0" />,
-    info: <Info className="w-5 h-5 text-accent-blue shrink-0" />,
-  };
-
-  const borderMap = {
-    success: "border-risk-safe/40 shadow-glow-green/10",
-    warning: "border-risk-caution/40 shadow-glow-amber/10",
-    error: "border-risk-high/40 shadow-glow-red/10",
-    info: "border-accent-blue/40 shadow-glow-blue/10",
+    success: <CheckCircle2 className="w-4 h-4 text-[#15803D] shrink-0" />,
+    warning: <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0" />,
+    error: <AlertCircle className="w-4 h-4 text-[#B42318] shrink-0" />,
+    info: <Info className="w-4 h-4 text-[#2548C9] shrink-0" />,
   };
 
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast, success, error, warning, info }}>
       {children}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         <AnimatePresence>
           {toasts.map((toast) => (
             <motion.div
               key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "pointer-events-auto flex items-start gap-3 p-4 rounded-xl bg-surface border shadow-2xl backdrop-blur-md",
-                borderMap[toast.type]
-              )}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className="pointer-events-auto flex items-start gap-2.5 p-3.5 rounded-[10px] bg-white border border-[#E5E7EB] shadow-md"
             >
               {iconMap[toast.type]}
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-primary leading-tight">
+                <h4 className="text-sm font-medium text-[#111827] leading-tight">
                   {toast.title}
                 </h4>
                 {toast.message && (
-                  <p className="text-xs text-primary-muted mt-1 leading-relaxed">
+                  <p className="text-xs text-[#6B7280] mt-0.5 leading-normal">
                     {toast.message}
                   </p>
                 )}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-primary-muted hover:text-primary transition-colors p-0.5 rounded"
+                className="text-[#9CA3AF] hover:text-[#111827] transition-colors p-0.5"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>
           ))}
@@ -125,4 +115,3 @@ export const useToast = () => {
   }
   return context;
 };
-

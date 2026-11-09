@@ -10,7 +10,7 @@ export interface ModalProps {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -22,18 +22,14 @@ export const Modal: React.FC<ModalProps> = ({
   footer,
   maxWidth = 'md',
 }) => {
-  // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape' && isOpen) onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Lock background scroll when open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -50,60 +46,59 @@ export const Modal: React.FC<ModalProps> = ({
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          {/* Backdrop */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          {/* Backdrop: 150ms simple fade */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="fixed inset-0 bg-[#0B1220]/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#111827]/40"
           />
 
           {/* Dialog Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
             className={cn(
-              "relative w-full rounded-2xl bg-surface border border-border shadow-2xl overflow-hidden z-10",
+              "relative w-full rounded-[10px] bg-white border border-[#E5E7EB] shadow-lg overflow-hidden z-10",
               maxWidthClasses[maxWidth]
             )}
           >
             {/* Header */}
             {(title || description) && (
-              <div className="flex items-start justify-between p-6 pb-4 border-b border-border/50">
+              <div className="flex items-start justify-between p-5 pb-4 border-b border-[#E5E7EB]">
                 <div>
                   {title && (
-                    <h3 className="text-lg font-semibold text-primary">{title}</h3>
+                    <h3 className="text-base font-semibold text-[#111827]">{title}</h3>
                   )}
                   {description && (
-                    <p className="text-sm text-primary-muted mt-1">{description}</p>
+                    <p className="text-sm text-[#6B7280] mt-0.5">{description}</p>
                   )}
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-primary-muted hover:text-primary hover:bg-elevated transition-colors"
+                  className="p-1 rounded-md text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             )}
 
             {/* Body */}
-            <div className="p-6">{children}</div>
+            <div className="p-5">{children}</div>
 
             {/* Footer */}
             {footer && (
-              <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-border/50 bg-surface/50">
+              <div className="flex items-center justify-end gap-2.5 p-4 border-t border-[#E5E7EB] bg-[#F9FAFB]">
                 {footer}
               </div>
             )}
@@ -113,4 +108,3 @@ export const Modal: React.FC<ModalProps> = ({
     </AnimatePresence>
   );
 };
-

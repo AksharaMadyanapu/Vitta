@@ -1,114 +1,109 @@
 import {
-  LayoutDashboard,
-  Landmark,
+  Home,
+  FileText,
   Users,
-  FileSpreadsheet,
-  CalendarClock,
-  Clock,
-  LineChart,
-  ShieldAlert,
+  Truck,
+  Building,
+  TrendingUp,
   ShieldCheck,
-  BarChart3,
+  Calendar,
+  Clock,
+  BarChart2,
+  Settings,
   LucideIcon,
 } from 'lucide-react';
 
 export interface NavItem {
   id: string;
   label: string;
-  shortLabel?: string;
   path: string;
   icon: LucideIcon;
-  badge?: string;
-  badgeVariant?: 'safe' | 'caution' | 'high' | 'blue' | 'teal';
-  description: string;
 }
 
-export const navigationItems: NavItem[] = [
+export interface NavGroup {
+  heading: string;
+  items: NavItem[];
+}
+
+export const navigationGroups: NavGroup[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    path: '/dashboard',
-    icon: LayoutDashboard,
-    description: 'Executive overview, runway horizon, and liquidity pulse',
+    heading: 'HOME',
+    items: [
+      {
+        id: 'overview',
+        label: 'Overview',
+        path: '/dashboard',
+        icon: Home,
+      },
+    ],
   },
   {
-    id: 'banking',
-    label: 'Bank & Transactions',
-    shortLabel: 'Banking',
-    path: '/banking',
-    icon: Landmark,
-    badge: 'Sandbox',
-    badgeVariant: 'teal',
-    description: 'Simulated bank feed, CSV reconciliation, and ledger entries',
+    heading: 'MONEY',
+    items: [
+      {
+        id: 'invoices',
+        label: 'Invoices',
+        path: '/invoices',
+        icon: FileText,
+      },
+      {
+        id: 'customers',
+        label: 'Customers',
+        path: '/customers',
+        icon: Users,
+      },
+      {
+        id: 'suppliers',
+        label: 'Suppliers',
+        path: '/suppliers',
+        icon: Truck,
+      },
+      {
+        id: 'banking',
+        label: 'Bank and transactions',
+        path: '/banking',
+        icon: Building,
+      },
+    ],
   },
   {
-    id: 'parties',
-    label: 'Customers & Suppliers',
-    shortLabel: 'Parties',
-    path: '/parties',
-    icon: Users,
-    description: 'Directory of 12 customers & 8 suppliers with risk profiles',
+    heading: 'PLANNING',
+    items: [
+      {
+        id: 'forecast',
+        label: 'Cash forecast',
+        path: '/forecast',
+        icon: TrendingUp,
+      },
+      {
+        id: 'check-purchase',
+        label: 'Check a purchase',
+        path: '/pre-transaction',
+        icon: ShieldCheck,
+      },
+      {
+        id: 'calendar',
+        label: 'Calendar',
+        path: '/reminders',
+        icon: Calendar,
+      },
+    ],
   },
   {
-    id: 'invoices',
-    label: 'Invoices & OCR',
-    shortLabel: 'Invoices',
-    path: '/invoices',
-    icon: FileSpreadsheet,
-    description: 'Receivables & payables, status tracking, PDF data extraction',
-  },
-  {
-    id: 'reminders',
-    label: 'Reminders & Calendar',
-    shortLabel: 'Reminders',
-    path: '/reminders',
-    icon: CalendarClock,
-    badge: '3 Due',
-    badgeVariant: 'caution',
-    description: '7-day advance payment notices and due date calendar',
-  },
-  {
-    id: 'customer-analytics',
-    label: 'Customer Behaviour',
-    shortLabel: 'Behaviour',
-    path: '/customer-analytics',
-    icon: Clock,
-    description: 'Historical payment delay distributions and bootstrap metrics',
-  },
-  {
-    id: 'forecast',
-    label: 'Cash-Flow Forecast',
-    shortLabel: 'Forecast',
-    path: '/forecast',
-    icon: LineChart,
-    badge: '2000 Runs',
-    badgeVariant: 'blue',
-    description: '14/30/60-day p10/p50/p90 simulations and shortfall discovery',
-  },
-  {
-    id: 'risk-alerts',
-    label: 'Risk Alerts',
-    path: '/risk-alerts',
-    icon: ShieldAlert,
-    badge: 'Action Needed',
-    badgeVariant: 'high',
-    description: 'Preventive alerts, shortfall warning dates, recommended steps',
-  },
-  {
-    id: 'pre-transaction',
-    label: 'Pre-Transaction Check',
-    shortLabel: 'Risk Check',
-    path: '/pre-transaction',
-    icon: ShieldCheck,
-    description: 'Check proposed POs, capital expenditures, or supplier payments',
-  },
-  {
-    id: 'business-analytics',
-    label: 'Business Performance',
-    shortLabel: 'Analytics',
-    path: '/business-analytics',
-    icon: BarChart3,
-    description: 'Working capital cycles, burn rates, and financial health KPIs',
+    heading: 'INSIGHTS',
+    items: [
+      {
+        id: 'payment-behaviour',
+        label: 'Payment behaviour',
+        path: '/customer-analytics',
+        icon: Clock,
+      },
+      {
+        id: 'reports',
+        label: 'Reports',
+        path: '/business-analytics',
+        icon: BarChart2,
+      },
+    ],
   },
 ];
-

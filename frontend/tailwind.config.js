@@ -4,84 +4,65 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        background: '#0B1220',
-        surface: {
-          DEFAULT: '#111A2E',
-          hover: '#142038',
-        },
-        elevated: {
-          DEFAULT: '#16213A',
-          hover: '#1D2B4C',
-        },
+        background: '#F7F8FA',
+        surface: '#FFFFFF',
         border: {
-          DEFAULT: '#22304D',
-          subtle: '#1C2942',
-          focus: '#3B82F6',
+          DEFAULT: '#E5E7EB',
+          subtle: '#F3F4F6',
+          strong: '#D1D5DB',
         },
         primary: {
-          DEFAULT: '#E6ECF8',
-          muted: '#8FA0C0',
-          dark: '#5B6F96',
+          DEFAULT: '#111827',
+          secondary: '#6B7280',
+          muted: '#9CA3AF',
         },
-        // Accents
-        navy: {
-          950: '#0B1220',
-          900: '#111A2E',
-          800: '#16213A',
-          700: '#22304D',
-          600: '#33486F',
-        },
+        // ONE Accent colour
         accent: {
-          blue: '#3B82F6',
-          teal: '#14B8A6',
-          green: '#22C55E',
-          amber: '#F59E0B',
-          red: '#EF4444',
+          DEFAULT: '#2548C9',
+          hover: '#1E3EA8',
+          light: '#EEF2FF',
+          border: '#C7D2FE',
         },
-        // Risk status colors
-        risk: {
+        // Soft status colours (muted pills)
+        status: {
           safe: {
-            DEFAULT: '#22C55E',
-            bg: 'rgba(34, 197, 94, 0.12)',
-            border: 'rgba(34, 197, 94, 0.3)',
-            text: '#4ADE80',
+            text: '#15803D',
+            bg: '#ECFDF3',
+            border: '#D1FADF',
           },
           caution: {
-            DEFAULT: '#F59E0B',
-            bg: 'rgba(245, 158, 11, 0.12)',
-            border: 'rgba(245, 158, 11, 0.3)',
-            text: '#FBBF24',
+            text: '#B45309',
+            bg: '#FFFAEB',
+            border: '#FEDF89',
           },
-          high: {
-            DEFAULT: '#EF4444',
-            bg: 'rgba(239, 68, 68, 0.12)',
-            border: 'rgba(239, 68, 68, 0.3)',
-            text: '#F87171',
+          danger: {
+            text: '#B42318',
+            bg: '#FEF3F2',
+            border: '#FECDCA',
+          },
+          neutral: {
+            text: '#4B5563',
+            bg: '#F3F4F6',
+            border: '#E5E7EB',
           },
         },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       borderRadius: {
-        '2xl': '1rem',
-        '3xl': '1.5rem',
+        card: '10px',
       },
       boxShadow: {
-        'glow-blue': '0 0 25px -5px rgba(59, 130, 246, 0.25)',
-        'glow-teal': '0 0 25px -5px rgba(20, 184, 166, 0.25)',
-        'glow-green': '0 0 25px -5px rgba(34, 197, 94, 0.25)',
-        'glow-amber': '0 0 25px -5px rgba(245, 158, 11, 0.25)',
-        'glow-red': '0 0 25px -5px rgba(239, 68, 68, 0.25)',
-        'card-hover': '0 8px 30px rgba(0, 0, 0, 0.35), 0 0 15px rgba(59, 130, 246, 0.1)',
+        sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+      },
+      transitionDuration: {
+        DEFAULT: '150ms',
       },
     },
   },
   plugins: [],
 }
-

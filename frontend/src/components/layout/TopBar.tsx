@@ -1,130 +1,77 @@
 import React, { useState } from 'react';
-import {
-  Search,
-  Bell,
-  Building2,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  Sparkles,
-  Command,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
+import { Search, Bell } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/utils/cn';
 
 export interface TopBarProps {
-  sidebarCollapsed: boolean;
-  onOpenSearch?: () => void;
+  onSearch?: (query: string) => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({
-  sidebarCollapsed,
-  onOpenSearch,
-}) => {
+export const TopBar: React.FC<TopBarProps> = () => {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(2);
 
   const notifications = [
     {
       id: '1',
-      title: 'Shortfall Risk at Day 22',
-      message: 'Projected GST liability + raw material payment creates a ₹4,80,000 cash deficit.',
-      time: '10m ago',
-      type: 'high' as const,
+      title: 'Shortage expected around 20 November',
+      message: 'GST payment and raw material bills will require about ₹4.8L more than current cash reserves.',
+      time: 'Today',
+      severity: 'caution' as const,
     },
     {
       id: '2',
-      title: 'Invoice Due in 7 Days',
-      message: '₹6,40,000 from Kalyani Powertrain Ltd is due next Tuesday.',
-      time: '1h ago',
-      type: 'caution' as const,
-    },
-    {
-      id: '3',
-      title: 'Bank Statement Synced',
-      message: 'Simulated Current A/c balance updated to ₹18,45,200.',
-      time: '2h ago',
-      type: 'safe' as const,
+      title: 'Kalyani Powertrain bill overdue',
+      message: '₹6,40,000 from Kalyani Powertrain Ltd is 8 days past due date.',
+      time: 'Yesterday',
+      severity: 'danger' as const,
     },
   ];
 
   return (
     <>
-      <header
-        className={cn(
-          "fixed top-0 right-0 z-30 h-16 bg-surface/90 backdrop-blur-md border-b border-border transition-all duration-300 flex items-center justify-between px-6 select-none",
-          sidebarCollapsed ? "left-20" : "left-64"
-        )}
-      >
-        {/* Left: Company Identity & Demo badge */}
+      <header className="fixed top-0 right-0 left-[232px] z-20 h-14 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-6 select-none">
+        {/* Company name & quiet Demo data label */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-elevated border border-border flex items-center justify-center text-accent-blue">
-              <Building2 className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold tracking-tight text-primary">
-                  Deccan Precision Components
-                </span>
-                <Badge
-                  variant="blue"
-                  size="sm"
-                  className="font-medium text-[10px] uppercase tracking-wider py-0 px-2"
-                >
-                  Demo data
-                </Badge>
-              </div>
-              <p className="text-[11px] text-primary-muted truncate">
-                Automotive Parts · Hyderabad, TS
-              </p>
-            </div>
-          </div>
+          <span className="text-sm font-semibold text-[#111827]">
+            Deccan Precision Components
+          </span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#F3F4F6] text-[#6B7280]">
+            Demo data
+          </span>
         </div>
 
-        {/* Center: Global Search Input */}
-        <div className="hidden md:flex items-center flex-1 max-w-md mx-8">
-          <div
-            onClick={onOpenSearch}
-            className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-elevated border border-border hover:border-accent-blue/40 text-primary-muted text-xs cursor-pointer transition-colors shadow-inner"
-          >
-            <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-primary-muted" />
-              <span>Search invoices, customers, transactions...</span>
-            </div>
-            <kbd className="inline-flex items-center gap-1 font-mono text-[10px] bg-surface px-1.5 py-0.5 rounded border border-border/80 text-primary-muted">
-              <Command className="w-2.5 h-2.5" /> K
-            </kbd>
+        {/* Right side: search, notifications, profile */}
+        <div className="flex items-center gap-4">
+          <div className="relative hidden sm:block w-64">
+            <Search className="w-4 h-4 text-[#9CA3AF] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full pl-9 pr-3 py-1.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg text-sm text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:bg-white focus:border-[#2548C9] transition-colors"
+            />
           </div>
-        </div>
 
-        {/* Right: Actions & User Info */}
-        <div className="flex items-center gap-3">
           {/* Notification Bell */}
           <button
             onClick={() => setNotificationsOpen(true)}
-            className="relative p-2 rounded-xl text-primary-muted hover:text-primary hover:bg-elevated transition-colors border border-transparent hover:border-border"
+            className="relative p-1.5 rounded-lg text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] transition-colors"
             title="Notifications"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-[18px] h-[18px]" strokeWidth={1.75} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-risk-high text-[10px] font-bold text-white shadow-glow-red">
-                {unreadCount}
-              </span>
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#B42318]" />
             )}
           </button>
 
-          {/* User profile capsule */}
-          <div className="flex items-center gap-2.5 pl-3 border-l border-border/60">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent-blue to-accent-teal flex items-center justify-center text-white text-xs font-bold shadow-md shadow-accent-blue/20">
+          {/* User profile initials */}
+          <div className="flex items-center gap-2 pl-2 border-l border-[#E5E7EB]">
+            <div className="w-7 h-7 rounded-full bg-[#EEF2FF] text-[#2548C9] font-medium text-xs flex items-center justify-center">
               RR
             </div>
-            <div className="hidden sm:block text-left">
-              <div className="text-xs font-semibold text-primary">Rakesh Reddy</div>
-              <div className="text-[10px] text-primary-muted">Managing Director</div>
-            </div>
+            <span className="text-sm text-[#374151] hidden md:inline font-medium">
+              Rakesh Reddy
+            </span>
           </div>
         </div>
       </header>
@@ -133,16 +80,14 @@ export const TopBar: React.FC<TopBarProps> = ({
       <Drawer
         isOpen={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
-        title="Notifications & Alerts"
-        description="Real-time alerts generated from cash-flow intelligence"
+        title="Notifications"
+        description="Important alerts that need your review."
         footer={
           <div className="w-full flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setUnreadCount(0);
-              }}
+              onClick={() => setUnreadCount(0)}
             >
               Mark all as read
             </Button>
@@ -157,49 +102,26 @@ export const TopBar: React.FC<TopBarProps> = ({
         }
       >
         <div className="space-y-3">
-          {notifications.map((item) => {
-            const borderColors = {
-              high: "border-risk-high/30 bg-risk-high-bg/50",
-              caution: "border-risk-caution/30 bg-risk-caution-bg/50",
-              safe: "border-risk-safe/30 bg-risk-safe-bg/50",
-            };
-
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "p-4 rounded-xl border transition-all hover:bg-elevated/80",
-                  borderColors[item.type]
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {item.type === 'high' && (
-                      <span className="w-2 h-2 rounded-full bg-risk-high animate-pulse" />
-                    )}
-                    {item.type === 'caution' && (
-                      <span className="w-2 h-2 rounded-full bg-risk-caution" />
-                    )}
-                    {item.type === 'safe' && (
-                      <span className="w-2 h-2 rounded-full bg-risk-safe" />
-                    )}
-                    <h4 className="text-xs font-semibold text-primary">
-                      {item.title}
-                    </h4>
-                  </div>
-                  <span className="text-[10px] text-primary-muted font-mono">
-                    {item.time}
-                  </span>
-                </div>
-                <p className="text-xs text-primary-muted mt-2 leading-relaxed">
-                  {item.message}
-                </p>
+          {notifications.map((item) => (
+            <div
+              key={item.id}
+              className="p-3.5 rounded-[10px] border border-[#E5E7EB] bg-[#F9FAFB]"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-sm font-medium text-[#111827]">
+                  {item.title}
+                </h4>
+                <span className="text-xs text-[#9CA3AF] shrink-0">
+                  {item.time}
+                </span>
               </div>
-            );
-          })}
+              <p className="text-xs text-[#6B7280] mt-1 leading-relaxed">
+                {item.message}
+              </p>
+            </div>
+          ))}
         </div>
       </Drawer>
     </>
   );
 };
-

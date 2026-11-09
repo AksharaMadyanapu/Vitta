@@ -1,28 +1,18 @@
 import React, { useState } from 'react';
-import {
-  ShieldCheck,
-  Sparkles,
-  AlertTriangle,
-  CheckCircle2,
-  HelpCircle,
-  ArrowRight,
-} from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { SkeletonChart } from '@/components/ui/Skeleton';
 import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
 
 export const PreTransactionPage: React.FC = () => {
   const [amount, setAmount] = useState<number>(350000);
-  const [description, setDescription] = useState('New CNC Lathe Tooling Kit Purchase');
-  const [party, setParty] = useState('Sandvik Coromant India');
+  const [description, setDescription] = useState('New CNC lathe tooling kit');
+  const [vendor, setVendor] = useState('Sandvik Coromant India');
   const [targetDate, setTargetDate] = useState('2026-11-22');
   const [evaluated, setEvaluated] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [showSkeleton, setShowSkeleton] = useState(false);
   const { success } = useToast();
 
   const handleEvaluate = (e: React.FormEvent) => {
@@ -31,213 +21,186 @@ export const PreTransactionPage: React.FC = () => {
     setTimeout(() => {
       setIsEvaluating(false);
       setEvaluated(true);
-      success('What-If Risk Assessment Complete', 'Evaluated 2,000 simulations including this outflow.');
-    }, 900);
+      success('Check complete', 'Checked this payment against your expected bills and cash.');
+    }, 600);
   };
 
-  const isHighRisk = amount > 500000;
+  const causesShortage = amount > 500000;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pre-Transaction Risk Assessment"
-        description="Test planned purchase orders, capital expenditures, or supplier contracts against the forecast engine before committing funds."
-        badge={
-          <Badge variant="blue" dot>
-            Hypothetical Counterfactual Sandbox
-          </Badge>
-        }
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSkeleton(!showSkeleton)}
-          >
-            {showSkeleton ? 'View Content' : 'Preview Skeletons'}
-          </Button>
-        }
+        title="Check a purchase"
+        description="Check whether a planned payment will cause a cash shortage before you confirm it."
       />
 
-      {showSkeleton ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SkeletonChart height="h-96" />
-          <SkeletonChart height="h-96" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Form Card */}
-          <Card className="p-6">
-            <h3 className="text-base font-semibold text-primary pb-3 border-b border-border/50">
-              Simulate Proposed Outflow
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Form Card */}
+        <Card>
+          <div className="pb-3 border-b border-[#E5E7EB] mb-4">
+            <h3 className="text-base font-semibold text-[#111827]">
+              Enter planned payment details
             </h3>
-            <p className="text-xs text-primary-muted mt-1 mb-6">
-              Enter proposed transaction details to run a counterfactual check against existing receivables and obligations.
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              We will compare this payment against your scheduled bills and incoming payments.
             </p>
+          </div>
 
-            <form onSubmit={handleEvaluate} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-primary-muted uppercase tracking-wider mb-1.5">
-                  Proposed Outflow Amount (₹ INR)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary font-bold">
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    required
-                    className="w-full pl-9 pr-4 py-2.5 bg-elevated border border-border rounded-xl text-primary font-mono text-sm focus:outline-none focus:border-accent-blue"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-primary-muted uppercase tracking-wider mb-1.5">
-                  Vendor / Counterparty
-                </label>
-                <input
-                  type="text"
-                  value={party}
-                  onChange={(e) => setParty(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 bg-elevated border border-border rounded-xl text-primary text-sm focus:outline-none focus:border-accent-blue"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-primary-muted uppercase tracking-wider mb-1.5">
-                  Description / Purpose
-                </label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 bg-elevated border border-border rounded-xl text-primary text-sm focus:outline-none focus:border-accent-blue"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-primary-muted uppercase tracking-wider mb-1.5">
-                  Planned Execution Date
-                </label>
-                <input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 bg-elevated border border-border rounded-xl text-primary text-sm font-mono focus:outline-none focus:border-accent-blue"
-                />
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full"
-                  isLoading={isEvaluating}
-                  leftIcon={<Sparkles className="w-4 h-4" />}
-                >
-                  Evaluate Cash-Flow Risk
-                </Button>
-              </div>
-            </form>
-          </Card>
-
-          {/* Result Card */}
-          <Card className="p-6 flex flex-col justify-between">
+          <form onSubmit={handleEvaluate} className="space-y-4">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-border/50">
-                <h3 className="text-base font-semibold text-primary">
-                  Evaluation Verdict
-                </h3>
-                {evaluated && (
-                  <Badge variant={isHighRisk ? 'high' : 'safe'} size="md" dot>
-                    {isHighRisk ? 'Caution: Elevated Shortfall Risk' : 'Transaction Safe to Commit'}
-                  </Badge>
-                )}
+              <label className="block text-xs font-medium text-[#374151] mb-1">
+                Payment amount (₹)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">
+                  ₹
+                </span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  required
+                  placeholder="350000"
+                  className="w-full pl-7 pr-3 py-2 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#111827] focus:outline-none focus:border-[#2548C9]"
+                />
               </div>
+            </div>
 
-              {evaluated ? (
-                <div className="mt-6 space-y-5">
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isHighRisk
-                        ? 'bg-risk-high-bg border-risk-high/40'
-                        : 'bg-risk-safe-bg border-risk-safe/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {isHighRisk ? (
-                        <AlertTriangle className="w-5 h-5 text-risk-high" />
-                      ) : (
-                        <CheckCircle2 className="w-5 h-5 text-risk-safe" />
-                      )}
-                      <h4
-                        className={`text-sm font-bold ${
-                          isHighRisk ? 'text-risk-high-text' : 'text-risk-safe-text'
-                        }`}
-                      >
-                        {isHighRisk
-                          ? 'Triggers 42% Risk of Bank Overdraft Breach'
-                          : 'Comfortable Liquidity Margin Maintained'}
-                      </h4>
-                    </div>
+            <div>
+              <label className="block text-xs font-medium text-[#374151] mb-1">
+                Supplier or payee
+              </label>
+              <input
+                type="text"
+                value={vendor}
+                onChange={(e) => setVendor(e.target.value)}
+                required
+                placeholder="e.g. Tata Steel BSL Ltd"
+                className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#111827] focus:outline-none focus:border-[#2548C9]"
+              />
+            </div>
 
-                    <p className="text-xs text-primary-muted mt-2 leading-relaxed">
-                      {isHighRisk
-                        ? `Adding an outflow of ${formatINR(amount)} on ${targetDate} pushes the p10 balance to ₹-1,45,000 due to existing GST liabilities.`
-                        : `After this ${formatINR(amount)} outflow on ${targetDate}, projected minimum p10 cash buffer remains safe at ₹4,95,000.`}
-                    </p>
-                  </div>
+            <div>
+              <label className="block text-xs font-medium text-[#374151] mb-1">
+                What is this for?
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+                placeholder="e.g. Raw material batch"
+                className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#111827] focus:outline-none focus:border-[#2548C9]"
+              />
+            </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs py-2 border-b border-border/40">
-                      <span className="text-primary-muted">Pre-transaction p50 Median:</span>
-                      <strong className="text-primary font-mono font-semibold">₹24,50,000</strong>
-                    </div>
-                    <div className="flex items-center justify-between text-xs py-2 border-b border-border/40">
-                      <span className="text-primary-muted">Post-transaction p50 Median:</span>
-                      <strong className="text-accent-teal font-mono font-semibold">
-                        {formatINR(2450000 - amount)}
-                      </strong>
-                    </div>
-                    <div className="flex items-center justify-between text-xs py-2 border-b border-border/40">
-                      <span className="text-primary-muted">Estimated Cash Runway Shift:</span>
-                      <strong className="text-primary font-mono font-semibold">
-                        {isHighRisk ? '-8 Days (Down to 34 Days)' : '-2 Days (40 Days)'}
-                      </strong>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="py-16 text-center text-primary-muted flex flex-col items-center justify-center">
-                  <ShieldCheck className="w-12 h-12 text-primary-muted/40 mb-3" />
-                  <p className="text-sm font-medium">Ready to Simulate</p>
-                  <p className="text-xs text-primary-muted max-w-xs mt-1">
-                    Fill in the proposed outflow on the left to inspect probability impact on working capital.
-                  </p>
-                </div>
+            <div>
+              <label className="block text-xs font-medium text-[#374151] mb-1">
+                Planned payment date
+              </label>
+              <input
+                type="date"
+                value={targetDate}
+                onChange={(e) => setTargetDate(e.target.value)}
+                required
+                className="w-full px-3 py-2 bg-white border border-[#E5E7EB] rounded-lg text-sm text-[#111827] focus:outline-none focus:border-[#2548C9]"
+              />
+            </div>
+
+            <div className="pt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                className="w-full"
+                isLoading={isEvaluating}
+              >
+                Check cash impact
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        {/* Results Card */}
+        <Card className="flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+              <h3 className="text-base font-semibold text-[#111827]">
+                Result
+              </h3>
+              {evaluated && (
+                <Badge variant={causesShortage ? 'danger' : 'safe'}>
+                  {causesShortage ? 'Shortage risk' : 'Safe to proceed'}
+                </Badge>
               )}
             </div>
 
-            {evaluated && (
-              <div className="pt-4 border-t border-border/50">
-                <Button
-                  variant={isHighRisk ? 'secondary' : 'primary'}
-                  className="w-full"
-                  onClick={() => success('Approval Logged', 'Transaction marked as verified in procurement queue.')}
+            {evaluated ? (
+              <div className="mt-5 space-y-4">
+                <div
+                  className={`p-4 rounded-[10px] border ${
+                    causesShortage
+                      ? 'bg-[#FEF3F2] border-[#FECDCA]'
+                      : 'bg-[#ECFDF3] border-[#D1FADF]'
+                  }`}
                 >
-                  {isHighRisk ? 'Log with Exception Approval' : 'Approve & Queue Transaction'}
-                </Button>
+                  <h4
+                    className={`text-sm font-semibold ${
+                      causesShortage ? 'text-[#B42318]' : 'text-[#15803D]'
+                    }`}
+                  >
+                    {causesShortage
+                      ? 'This payment may cause a cash shortage'
+                      : 'This payment is safe to make'}
+                  </h4>
+                  <p className="text-xs text-[#4B5563] mt-1.5 leading-relaxed">
+                    {causesShortage
+                      ? `Paying ${formatINR(amount)} on ${targetDate} leaves you short of cash because of the upcoming GST payment on 20 Nov. Consider delaying this by 7 days or asking for a split payment.`
+                      : `After paying ${formatINR(amount)} on ${targetDate}, your bank balance is expected to stay at or above ₹6,45,000.`}
+                  </p>
+                </div>
+
+                <div className="space-y-2 text-sm pt-2">
+                  <div className="flex items-center justify-between py-1.5 border-b border-[#F3F4F6]">
+                    <span className="text-[#6B7280]">Current bank balance:</span>
+                    <strong className="text-[#111827] font-medium tabular-nums">₹18,45,200</strong>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5 border-b border-[#F3F4F6]">
+                    <span className="text-[#6B7280]">Expected balance after payment:</span>
+                    <strong className="text-[#111827] font-medium tabular-nums">
+                      {formatINR(1845200 - amount)}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between py-1.5">
+                    <span className="text-[#6B7280]">Lowest balance in next 30 days:</span>
+                    <strong className={causesShortage ? "text-[#B42318] font-medium tabular-nums" : "text-[#111827] font-medium tabular-nums"}>
+                      {causesShortage ? "Negative (Shortage)" : "₹6,45,000"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-16 text-center text-[#6B7280]">
+                <p className="text-sm font-medium text-[#111827]">No payment tested yet</p>
+                <p className="text-xs text-[#6B7280] mt-1 max-w-xs mx-auto">
+                  Fill in the details on the left and click "Check cash impact" to see how it affects your bank balance.
+                </p>
               </div>
             )}
-          </Card>
-        </div>
-      )}
+          </div>
+
+          {evaluated && (
+            <div className="pt-4 border-t border-[#E5E7EB]">
+              <Button
+                variant={causesShortage ? 'secondary' : 'primary'}
+                className="w-full"
+                onClick={() => success('Saved', 'Recorded this planned payment in your schedule.')}
+              >
+                {causesShortage ? 'Save as planned draft' : 'Confirm and schedule payment'}
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 };
-
