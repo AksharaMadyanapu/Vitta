@@ -71,8 +71,8 @@ def assess_transaction(payload: AssessRequest, db: Session = Depends(get_db)):
     else:
         actual_payment_day = days_offset
 
-    # Run baseline forecast (60 days to see the full impact)
-    base_res = run_forecast(db=db, horizon_days=60, as_of=today, seed=42)
+    # Run baseline forecast (60 days to see the full impact, 2000 sims for high accuracy purchase check)
+    base_res = run_forecast(db=db, horizon_days=60, as_of=today, seed=42, num_simulations=2000)
     base_prob = base_res.shortfall_prob_30
     before_curve = [round(b, 0) for b in base_res.p50]
     before_lowest = min(before_curve)
@@ -83,7 +83,7 @@ def assess_transaction(payload: AssessRequest, db: Session = Depends(get_db)):
     # Simulation with proposed transaction
     proposed_extra = [{"day": actual_payment_day, "amount": signed_amount, "label": payload.party}]
     after_res = run_forecast(
-        db=db, horizon_days=60, as_of=today, extra_items=proposed_extra, seed=42
+        db=db, horizon_days=60, as_of=today, extra_items=proposed_extra, seed=42, num_simulations=2000
     )
     after_prob = after_res.shortfall_prob_30
     after_curve = [round(b, 0) for b in after_res.p50]

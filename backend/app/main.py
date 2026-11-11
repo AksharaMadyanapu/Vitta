@@ -1,6 +1,8 @@
 from datetime import datetime
+import threading
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -12,22 +14,42 @@ from .schemas import HealthResponse
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Auto-seed on startup
-def _auto_seed():
-    from .seed import run_seed
+# Seeding status flag
+_is_seeding = False
+
+# Auto-seed on startup (strictly only if empty)
+def _auto_seed_and_warmup():
+    global _is_seeding
+    from .seed import run_seed, already_seeded
     db = SessionLocal()
     try:
-        run_seed(db)
+        if not already_seeded(db):
+            _is_seeding = True
+            run_seed(db)
+            _is_seeding = False
+
+        # Pre-warm default 14, 30 and 60 day forecasts so the first visitor does not wait
+        from .forecast import forecast as run_forecast
+        run_forecast(db, horizon_days=14)
+        run_forecast(db, horizon_days=30)
+        run_forecast(db, horizon_days=60)
+    except Exception as e:
+        print(f"Startup task error: {e}")
     finally:
+        _is_seeding = False
         db.close()
 
-_auto_seed()
+# Start background warm-up / seeding thread
+threading.Thread(target=_auto_seed_and_warmup, daemon=True).start()
 
 app = FastAPI(
     title="Runway Cash-Flow Intelligence API",
     description="SaaS cash-flow intelligence platform for Indian MSME manufacturers",
     version="2.0.0",
 )
+
+# Enable GZip compression for responses > 1000 bytes
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Configure CORS
 app.add_middleware(
@@ -64,14 +86,17 @@ app.include_router(reminders_router)
 
 @app.get("/api/health", response_model=HealthResponse)
 def health_check(db: Session = Depends(get_db)):
-    """Health check endpoint."""
+    """Health check endpoint with demo-ready status."""
     db_status = "connected"
-    try:
-        db.execute(text("SELECT 1"))
-    except Exception as e:
-        db_status = f"error: {str(e)}"
+    if _is_seeding:
+        db_status = "seeding"
+    else:
+        try:
+            db.execute(text("SELECT 1"))
+        except Exception as e:
+            db_status = f"error: {str(e)}"
     return HealthResponse(
-        status="ok",
+        status="warming_up" if _is_seeding else "ok",
         service="Runway Cash-flow Intelligence Backend",
         company=settings.COMPANY_NAME,
         timestamp=datetime.utcnow(),

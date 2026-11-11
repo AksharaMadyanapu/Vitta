@@ -36,7 +36,8 @@ def list_transactions(
     q: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    query = db.query(Transaction)
+    from sqlalchemy.orm import joinedload
+    query = db.query(Transaction).options(joinedload(Transaction.bank_account))
     if category:
         query = query.filter(Transaction.category == category)
     if account_id:
@@ -47,7 +48,20 @@ def list_transactions(
     items = query.order_by(Transaction.transaction_date.desc()).offset(offset).limit(limit).all()
     return {
         "total": total,
-        "items": [_enrich(t, db) for t in items],
+        "items": [
+            {
+                "id": t.id,
+                "bank_account_id": t.bank_account_id,
+                "bank_name": f"{t.bank_account.bank_name} ({t.bank_account.account_number})" if t.bank_account else None,
+                "transaction_date": t.transaction_date.isoformat(),
+                "description": t.description,
+                "amount": t.amount,
+                "category": t.category,
+                "source": t.source,
+                "reference_id": t.reference_id,
+            }
+            for t in items
+        ],
     }
 
 

@@ -35,8 +35,8 @@ class Counterparty(Base):
     __tablename__ = "counterparties"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
-    party_type = Column(String(20), nullable=False)  # "customer" or "supplier"
+    name = Column(String(255), nullable=False, index=True)
+    party_type = Column(String(20), nullable=False, index=True)  # "customer" or "supplier"
     contact_person = Column(String(255), nullable=True)
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
@@ -55,14 +55,14 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
-    invoice_number = Column(String(100), unique=True, nullable=False)
-    counterparty_id = Column(Integer, ForeignKey("counterparties.id"), nullable=False)
-    invoice_type = Column(String(20), nullable=False)  # "receivable" or "payable"
+    invoice_number = Column(String(100), unique=True, nullable=False, index=True)
+    counterparty_id = Column(Integer, ForeignKey("counterparties.id"), nullable=False, index=True)
+    invoice_type = Column(String(20), nullable=False, index=True)  # "receivable" or "payable"
     amount = Column(Float, nullable=False)
-    issue_date = Column(Date, nullable=False)
-    due_date = Column(Date, nullable=False)
-    paid_date = Column(Date, nullable=True)
-    status = Column(String(30), default="unpaid")  # unpaid, paid, overdue, partially_paid
+    issue_date = Column(Date, nullable=False, index=True)
+    due_date = Column(Date, nullable=False, index=True)
+    paid_date = Column(Date, nullable=True, index=True)
+    status = Column(String(30), default="unpaid", index=True)  # unpaid, paid, overdue, partially_paid
     notes = Column(Text, nullable=True)
     file_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -74,11 +74,11 @@ class Transaction(Base):
     __tablename__ = "transactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    bank_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=False)
-    transaction_date = Column(Date, nullable=False)
+    bank_account_id = Column(Integer, ForeignKey("bank_accounts.id"), nullable=False, index=True)
+    transaction_date = Column(Date, nullable=False, index=True)
     description = Column(String(500), nullable=False)
     amount = Column(Float, nullable=False)  # positive=credit, negative=debit
-    category = Column(String(100), nullable=True)
+    category = Column(String(100), nullable=True, index=True)
     source = Column(String(50), default="simulated")  # manual, csv, simulated
     reference_id = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

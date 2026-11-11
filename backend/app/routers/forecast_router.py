@@ -57,10 +57,12 @@ def forecast_endpoint(payload: ForecastRequest, db: Session = Depends(get_db)):
 def forecast_get(
     horizon_days: int = Query(30, ge=14, le=60),
     as_of: Optional[date] = None,
+    accuracy: Optional[str] = Query("normal", description="'normal' (500 sims) or 'high' (2000 sims)"),
     db: Session = Depends(get_db),
 ):
     """GET version of forecast (no overrides)."""
-    result = run_forecast(db=db, horizon_days=horizon_days, as_of=as_of)
+    num_sims = 2000 if accuracy == "high" else None
+    result = run_forecast(db=db, horizon_days=horizon_days, as_of=as_of, num_simulations=num_sims)
     return ForecastResponse(
         horizon_days=result.horizon_days,
         as_of=result.as_of.isoformat(),
@@ -89,7 +91,8 @@ def runway_endpoint(
     today = date.today()
     as_of = as_of or today
 
-    days = get_runway_days(db, as_of=as_of)
+    result_60 = run_forecast(db=db, horizon_days=60, as_of=as_of)
+    days = get_runway_days(db, as_of=as_of, forecast_60=result_60)
     result_30 = run_forecast(db=db, horizon_days=30, as_of=as_of)
 
     total_balance = sum(a.current_balance for a in db.query(BankAccount).all())

@@ -266,11 +266,8 @@ export const ForecastPage: React.FC = () => {
 
     missing.forEach(async (id) => {
       try {
-        const res = await fetch(`/api/parties/${id}`);
-        if (res.ok) {
-          const p = await res.json();
-          setParties((prev) => ({ ...prev, [id]: p }));
-        }
+        const p = await api.getParty(id);
+        setParties((prev) => ({ ...prev, [id]: p }));
       } catch {
         // ignore
       }

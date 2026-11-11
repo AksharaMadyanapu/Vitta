@@ -34,8 +34,16 @@ class ActionCard(BaseModel):
     applied: bool = False
 
 
+_rec_cache = None
+_rec_cache_time = 0.0
+
 @router.get("", response_model=List[ActionCard])
 def get_recommendations(db: Session = Depends(get_db)):
+    global _rec_cache, _rec_cache_time
+    import time
+    if _rec_cache and (time.time() - _rec_cache_time < 60.0):
+        return _rec_cache
+
     today = date.today()
 
     # 1. Base forecast
@@ -179,5 +187,7 @@ def get_recommendations(db: Session = Depends(get_db)):
         )
     )
 
+    _rec_cache = actions
+    _rec_cache_time = time.time()
     return actions
 

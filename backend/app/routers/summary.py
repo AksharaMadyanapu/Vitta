@@ -49,8 +49,16 @@ def _fmt_inr(amount: float) -> str:
     return prefix + formatted
 
 
+_summary_cache = None
+_summary_cache_time = 0.0
+
 @router.get("/summary", response_model=DashboardSummary)
 def get_summary(db: Session = Depends(get_db)):
+    global _summary_cache, _summary_cache_time
+    import time
+    if _summary_cache and (time.time() - _summary_cache_time < 60.0):
+        return _summary_cache
+
     today = date.today()
     horizon_30 = today + timedelta(days=30)
 
@@ -169,7 +177,7 @@ def get_summary(db: Session = Depends(get_db)):
         if days_late > 0:
             total_interest_cost += inv.amount * (days_late / 365.0) * 0.12
 
-    return DashboardSummary(
+    res = DashboardSummary(
         total_bank_balance=total_balance,
         total_receivables_30d=recv_30d,
         total_payables_30d=payables_30d,
@@ -180,6 +188,9 @@ def get_summary(db: Session = Depends(get_db)):
         attention_items=attention_items[:5],
         accounts=[BankAccountSchema.model_validate(a) for a in accounts],
     )
+    _summary_cache = res
+    _summary_cache_time = time.time()
+    return res
 
 
 @router.get("/alerts", response_model=List[RiskAlertSchema])

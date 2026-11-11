@@ -196,23 +196,51 @@ export interface ReminderItem {
   last_sent_at?: string;
 }
 
-const API_BASE = '/api';
+export interface HealthData {
+  status: string;
+  service: string;
+  company: string;
+  timestamp: string;
+  database: string;
+}
+
+const API_BASE = (((import.meta as any).env?.VITE_API_URL as string) || '/api').replace(/\/+$/, '');
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
 export const api = {
+  getHealth: async (): Promise<HealthData> => {
+    const res = await fetchWithTimeout(`${API_BASE}/health`, {}, 15000);
+    if (!res.ok) throw new Error('Server health check failed');
+    return res.json();
+  },
+
   getRunway: async (): Promise<RunwayData> => {
-    const res = await fetch(`${API_BASE}/runway`);
+    const res = await fetchWithTimeout(`${API_BASE}/runway`);
     if (!res.ok) throw new Error('Failed to fetch runway metric');
     return res.json();
   },
 
   getSummary: async (): Promise<DashboardSummaryData> => {
-    const res = await fetch(`${API_BASE}/summary`);
+    const res = await fetchWithTimeout(`${API_BASE}/summary`);
     if (!res.ok) throw new Error('Failed to fetch summary data');
     return res.json();
   },
 
   getForecast: async (horizon_days: number = 30): Promise<ForecastData> => {
-    const res = await fetch(`${API_BASE}/forecast?horizon_days=${horizon_days}`);
+    const res = await fetchWithTimeout(`${API_BASE}/forecast?horizon_days=${horizon_days}`);
     if (!res.ok) throw new Error('Failed to fetch forecast');
     return res.json();
   },
@@ -222,7 +250,7 @@ export const api = {
     overrides?: OverrideItem[],
     extra_items?: any[]
   ): Promise<ForecastData> => {
-    const res = await fetch(`${API_BASE}/forecast`, {
+    const res = await fetchWithTimeout(`${API_BASE}/forecast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -236,39 +264,39 @@ export const api = {
   },
 
   getBacktest: async (days_before_crunch: number = 21): Promise<BacktestData> => {
-    const res = await fetch(`${API_BASE}/forecast/backtest?days_before_crunch=${days_before_crunch}`);
+    const res = await fetchWithTimeout(`${API_BASE}/forecast/backtest?days_before_crunch=${days_before_crunch}`);
     if (!res.ok) throw new Error('Failed to fetch backtest');
     return res.json();
   },
 
   getRecommendations: async (): Promise<ActionCardItem[]> => {
-    const res = await fetch(`${API_BASE}/recommendations`);
+    const res = await fetchWithTimeout(`${API_BASE}/recommendations`);
     if (!res.ok) throw new Error('Failed to fetch recommendations');
     return res.json();
   },
 
   chatCopilot: async (message: string, history?: any[]): Promise<ChatResponse> => {
-    const res = await fetch(`${API_BASE}/copilot/chat`, {
+    const res = await fetchWithTimeout(`${API_BASE}/copilot/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, history }),
-    });
+    }, 25000);
     if (!res.ok) throw new Error('Failed to contact Copilot');
     return res.json();
   },
 
   assessPurchase: async (data: AssessRequest): Promise<AssessResponse> => {
-    const res = await fetch(`${API_BASE}/risk/assess`, {
+    const res = await fetchWithTimeout(`${API_BASE}/risk/assess`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
-    });
+    }, 15000);
     if (!res.ok) throw new Error('Failed to assess purchase risk');
     return res.json();
   },
 
   confirmPurchase: async (data: ConfirmRequest): Promise<any> => {
-    const res = await fetch(`${API_BASE}/risk/confirm`, {
+    const res = await fetchWithTimeout(`${API_BASE}/risk/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -278,13 +306,13 @@ export const api = {
   },
 
   getReminders: async (): Promise<ReminderItem[]> => {
-    const res = await fetch(`${API_BASE}/reminders`);
+    const res = await fetchWithTimeout(`${API_BASE}/reminders`);
     if (!res.ok) throw new Error('Failed to fetch reminders');
     return res.json();
   },
 
   sendReminder: async (invoice_id: number, channel: string = 'whatsapp', language: string = 'en'): Promise<any> => {
-    const res = await fetch(`${API_BASE}/reminders/send`, {
+    const res = await fetchWithTimeout(`${API_BASE}/reminders/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoice_id, channel, language }),
@@ -293,8 +321,49 @@ export const api = {
     return res.json();
   },
 
+  getParties: async (party_type?: 'customer' | 'supplier'): Promise<any[]> => {
+    const url = party_type ? `${API_BASE}/parties?party_type=${party_type}` : `${API_BASE}/parties`;
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) throw new Error('Failed to fetch counterparties');
+    return res.json();
+  },
+
+  getParty: async (id: number): Promise<any> => {
+    const res = await fetchWithTimeout(`${API_BASE}/parties/${id}`);
+    if (!res.ok) throw new Error('Failed to fetch party details');
+    return res.json();
+  },
+
+  getInvoices: async (params?: { invoice_type?: string; status?: string; limit?: number }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.invoice_type) query.set('invoice_type', params.invoice_type);
+    if (params?.status) query.set('status', params.status);
+    if (params?.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    const res = await fetchWithTimeout(`${API_BASE}/invoices${qs ? `?${qs}` : ''}`);
+    if (!res.ok) throw new Error('Failed to fetch invoices');
+    return res.json();
+  },
+
+  getTransactions: async (params?: { limit?: number; category?: string; account_id?: number }): Promise<any> => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.category) query.set('category', params.category);
+    if (params?.account_id) query.set('account_id', String(params.account_id));
+    const qs = query.toString();
+    const res = await fetchWithTimeout(`${API_BASE}/transactions${qs ? `?${qs}` : ''}`);
+    if (!res.ok) throw new Error('Failed to fetch transactions');
+    return res.json();
+  },
+
+  getAccounts: async (): Promise<BankAccountItem[]> => {
+    const res = await fetchWithTimeout(`${API_BASE}/accounts`);
+    if (!res.ok) throw new Error('Failed to fetch bank accounts');
+    return res.json();
+  },
+
   reseedDatabase: async (): Promise<{ ok: boolean; message: string }> => {
-    const res = await fetch(`${API_BASE}/admin/reseed`, { method: 'POST' });
+    const res = await fetchWithTimeout(`${API_BASE}/admin/reseed`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to reseed database');
     return res.json();
   },

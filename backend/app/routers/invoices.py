@@ -37,7 +37,8 @@ def list_invoices(
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
-    q = db.query(Invoice)
+    from sqlalchemy.orm import joinedload
+    q = db.query(Invoice).options(joinedload(Invoice.counterparty))
     if invoice_type:
         q = q.filter(Invoice.invoice_type == invoice_type)
     if status:
@@ -46,7 +47,22 @@ def list_invoices(
     invoices = q.order_by(Invoice.due_date.desc()).offset(offset).limit(limit).all()
     return {
         "total": total,
-        "items": [_enrich(inv, db) for inv in invoices],
+        "items": [
+            {
+                "id": inv.id,
+                "invoice_number": inv.invoice_number,
+                "counterparty_id": inv.counterparty_id,
+                "counterparty_name": inv.counterparty.name if inv.counterparty else None,
+                "invoice_type": inv.invoice_type,
+                "amount": inv.amount,
+                "issue_date": inv.issue_date.isoformat(),
+                "due_date": inv.due_date.isoformat(),
+                "paid_date": inv.paid_date.isoformat() if inv.paid_date else None,
+                "status": inv.status,
+                "notes": inv.notes,
+            }
+            for inv in invoices
+        ],
     }
 
 

@@ -43,6 +43,12 @@ def invalidate_cache() -> None:
     global _cache, _cache_dirty
     _cache = {}
     _cache_dirty = False
+    try:
+        from .routers import summary, recommendations
+        summary._summary_cache = None
+        recommendations._rec_cache = None
+    except Exception:
+        pass
 
 
 def _cache_key(horizon_days: int, as_of: Optional[date], overrides, extra_items) -> str:
@@ -257,11 +263,12 @@ def _run_simulation(
 
         payment_days = np.round(sampled_payment_days).astype(int)
 
-        # Cap at horizon; payments after horizon are not counted
-        for sim_i in range(N):
-            day_idx = int(payment_days[sim_i])
-            if 0 <= day_idx <= T:
-                flows[sim_i, day_idx] += inv.amount
+        # Cap at horizon; vectorized addition using valid mask & advanced indexing
+        valid_mask = (payment_days >= 0) & (payment_days <= T)
+        if np.any(valid_mask):
+            sim_indices = np.where(valid_mask)[0]
+            day_indices = payment_days[valid_mask]
+            np.add.at(flows, (sim_indices, day_indices), inv.amount)
 
     # ── Payables ─────────────────────────────────────────────────────────────
     for inv in open_pay:
@@ -277,10 +284,11 @@ def _run_simulation(
                     sup_shift = int(ov["delay_days"])
 
         payment_days = np.clip(base_days + jitter + sup_shift, 0, None)
-        for sim_i in range(N):
-            day_idx = int(payment_days[sim_i])
-            if 0 <= day_idx <= T:
-                flows[sim_i, day_idx] -= inv.amount
+        valid_mask = (payment_days >= 0) & (payment_days <= T)
+        if np.any(valid_mask):
+            sim_indices = np.where(valid_mask)[0]
+            day_indices = payment_days[valid_mask]
+            np.add.at(flows, (sim_indices, day_indices), -inv.amount)
 
     # ── Recurring expenses ────────────────────────────────────────────────────
     for exp in recurring:
@@ -446,29 +454,34 @@ def forecast(
     overrides: Optional[List[Dict]] = None,
     extra_items: Optional[List[Dict]] = None,
     seed: int = 42,
+    num_simulations: Optional[int] = None,
 ) -> ForecastResult:
     """
     Run the Monte Carlo cash-flow forecast.
 
     Parameters
     ----------
-    db           : SQLAlchemy session
-    horizon_days : forecast window (14, 30, or 60)
-    as_of        : simulate from this date (default: today)
-    overrides    : list of override dicts — see module docstring
-    extra_items  : list of extra cash-flow items (for pre-transaction check)
-                   e.g. [{"day": 5, "amount": -500000, "label": "Machine purchase"}]
-    seed         : random seed for reproducibility
+    db              : SQLAlchemy session
+    horizon_days    : forecast window (14, 30, or 60)
+    as_of           : simulate from this date (default: today)
+    overrides       : list of override dicts — see module docstring
+    extra_items     : list of extra cash-flow items (for pre-transaction check)
+    seed            : random seed for reproducibility
+    num_simulations : number of Monte Carlo runs (default: settings.DEFAULT_SIMULATIONS, e.g. 500)
 
     Returns
     -------
     ForecastResult
     """
+    from .config import settings
+
     if as_of is None:
         as_of = date.today()
 
+    N = num_simulations or settings.DEFAULT_SIMULATIONS
+
     # Cache key
-    ckey = _cache_key(horizon_days, as_of, overrides, extra_items)
+    ckey = _cache_key(horizon_days, as_of, overrides, extra_items) + f"_N{N}"
     if ckey in _cache:
         ts, cached = _cache[ckey]
         if time.time() - ts < _cache_ttl:
@@ -478,7 +491,6 @@ def forecast(
 
     total_balance, open_recv, open_pay, recurring, customers, global_delays = _load_data(db, as_of)
 
-    N = 2000
     balance_matrix = _run_simulation(
         total_balance, open_recv, open_pay, recurring,
         customers, global_delays, as_of, horizon_days,
@@ -563,7 +575,11 @@ def forecast(
     return result
 
 
-def runway_days(db: Session, as_of: Optional[date] = None) -> int:
+def runway_days(
+    db: Session,
+    as_of: Optional[date] = None,
+    forecast_60: Optional[ForecastResult] = None,
+) -> int:
     """
     Compute days of runway = days until median balance first goes negative.
     Returns 999 if balance stays positive for 60+ days.
@@ -571,7 +587,7 @@ def runway_days(db: Session, as_of: Optional[date] = None) -> int:
     if as_of is None:
         as_of = date.today()
 
-    res = forecast(db, horizon_days=60, as_of=as_of)
+    res = forecast_60 or forecast(db, horizon_days=60, as_of=as_of)
     for i, bal in enumerate(res.p50):
         if bal < 0:
             return i
