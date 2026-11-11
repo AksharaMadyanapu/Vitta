@@ -4,7 +4,6 @@ import { cn } from '@/utils/cn';
 export interface PageHeaderProps {
   title: string;
   description?: string;
-  badge?: React.ReactNode;
   action?: React.ReactNode;
   secondaryAction?: React.ReactNode;
   className?: string;
@@ -13,34 +12,25 @@ export interface PageHeaderProps {
 export const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   description,
-  badge,
   action,
   secondaryAction,
   className,
 }) => {
   return (
-    <div
-      className={cn(
-        "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 mb-6 border-b border-[#E8EAF0]",
-        className
-      )}
-    >
+    <div className={cn("flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 mb-2", className)}>
       <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-[26px] font-bold font-heading tracking-tight text-[#111827]">
-            {title}
-          </h1>
-          {badge}
-        </div>
+        {/* Rule 2: Fraunces serif (weight 600, 32px) */}
+        <h1 className="text-[28px] sm:text-[32px] font-semibold font-serif text-[#0F3D33] tracking-tight leading-tight">
+          {title}
+        </h1>
         {description && (
-          <p className="text-sm text-[#6B7280] mt-1">
+          <p className="text-sm text-[#527A71] mt-1.5 max-w-2xl leading-relaxed">
             {description}
           </p>
         )}
       </div>
-
       {(action || secondaryAction) && (
-        <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           {secondaryAction}
           {action}
         </div>

@@ -12,10 +12,9 @@ export interface StatCardProps {
   suffix?: string;
   icon?: LucideIcon;
   badgeTheme?: 'brand' | 'teal' | 'safe' | 'caution' | 'danger';
-  change?: number; // percentage change
-  changeLabel?: string;
+  bg?: 'white' | 'sand' | 'mint';
   subtitle?: string;
-  statusVariant?: 'safe' | 'caution' | 'danger' | 'neutral';
+  statusVariant?: string;
   className?: string;
   onClick?: () => void;
 }
@@ -28,11 +27,8 @@ export const StatCard: React.FC<StatCardProps> = ({
   prefix = '',
   suffix = '',
   icon: Icon,
-  badgeTheme = 'brand',
-  change,
-  changeLabel = 'vs last month',
+  bg = 'white',
   subtitle,
-  statusVariant,
   className,
   onClick,
 }) => {
@@ -42,82 +38,44 @@ export const StatCard: React.FC<StatCardProps> = ({
       : formatINR(value)
     : `${prefix}${value.toLocaleString('en-IN')}${suffix}`;
 
-  const isPositive = change !== undefined && change > 0;
-  const isNegative = change !== undefined && change < 0;
-
-  const badgeStyles = {
-    brand: 'bg-[#EEF0FD] text-[#3F3DDB]',
-    teal: 'bg-[#E6F7F7] text-[#0EA5A4]',
-    safe: 'bg-[#E8F7EE] text-[#15803D]',
-    caution: 'bg-[#FFF4DB] text-[#B45309]',
-    danger: 'bg-[#FDECEA] text-[#B42318]',
+  const bgClasses = {
+    white: 'bg-white',
+    sand: 'bg-[#F1E9DC]',
+    mint: 'bg-[#CDEBDD]',
   };
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[14px] bg-white border border-[#E8EAF0] p-5 shadow-card transition-all duration-180 flex flex-col justify-between",
-        onClick && "cursor-pointer hover:-translate-y-0.5 hover:shadow-card-hover hover:border-[#D8DAFA]",
+        "rounded-[24px] p-6 shadow-soft transition-all duration-250 flex flex-col justify-between",
+        bgClasses[bg],
+        onClick && "cursor-pointer hover:-translate-y-1 hover:shadow-soft-hover",
         className
       )}
     >
-      <div>
-        {/* Header row: Label & 36px Coloured Icon Badge */}
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-xs font-medium text-[#6B7280] leading-snug">
-            {title}
-          </span>
-          {Icon && (
-            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0 shadow-sm", badgeStyles[badgeTheme])}>
-              <Icon className="w-4 h-4" strokeWidth={2} />
-            </div>
-          )}
-        </div>
-
-        {/* Large 28px/600 Number */}
-        <div className="text-[28px] font-semibold tracking-tight text-[#111827] tabular-nums mt-2">
-          {formattedAmount}
-        </div>
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-xs font-semibold text-[#527A71] uppercase tracking-wider">
+          {title}
+        </span>
+        {Icon && (
+          <div className="w-9 h-9 rounded-full bg-[#0F3D33]/5 text-[#0F3D33] flex items-center justify-center shrink-0">
+            <Icon className="w-4 h-4" />
+          </div>
+        )}
       </div>
 
-      {/* Caption row */}
-      {(subtitle || change !== undefined || statusVariant) && (
-        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-[#F1F2F6] text-xs">
-          {subtitle && (
-            <span className="text-[#6B7280] truncate">
-              {subtitle}
-            </span>
-          )}
-
-          {change !== undefined && (
-            <span
-              className={cn(
-                "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium tabular-nums ml-auto shrink-0",
-                isPositive && "bg-[#E8F7EE] text-[#15803D]",
-                isNegative && "bg-[#FDECEA] text-[#B42318]",
-                !isPositive && !isNegative && "bg-[#F3F4F6] text-[#4B5563]"
-              )}
-            >
-              {isPositive ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`}
-            </span>
-          )}
-
-          {statusVariant && !change && (
-            <span
-              className={cn(
-                "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ml-auto shrink-0",
-                statusVariant === 'safe' && "bg-[#E8F7EE] text-[#15803D]",
-                statusVariant === 'caution' && "bg-[#FFF4DB] text-[#B45309]",
-                statusVariant === 'danger' && "bg-[#FDECEA] text-[#B42318]",
-                statusVariant === 'neutral' && "bg-[#F3F4F6] text-[#4B5563]"
-              )}
-            >
-              {subtitle}
-            </span>
-          )}
-        </div>
-      )}
+      <div className="mt-3">
+        {/* Rule 2: Fraunces serif for big numbers (36px, weight 600) */}
+        <p className="text-[32px] sm:text-[36px] font-semibold font-serif text-[#0F3D33] tracking-tight tabular-nums leading-none">
+          {formattedAmount}
+        </p>
+        {subtitle && (
+          <p className="text-xs text-[#527A71] mt-2 font-medium">
+            {subtitle}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

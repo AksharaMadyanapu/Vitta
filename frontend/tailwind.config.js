@@ -7,76 +7,56 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#F5F6FA',
+        cream: '#FBF7F0',
+        sand: '#F1E9DC',
+        ink: {
+          DEFAULT: '#0F3D33',
+          light: '#28584E',
+          muted: '#527A71',
+        },
+        mint: {
+          DEFAULT: '#CDEBDD',
+          dark: '#1C6B56',
+          light: '#EAF7F1',
+        },
+        butter: {
+          DEFAULT: '#FFE8A3',
+          dark: '#8A5B00',
+          light: '#FFF6D6',
+        },
+        coral: {
+          DEFAULT: '#FF6B4A',
+          hover: '#E85535',
+          light: '#FDEEE9',
+          dark: '#B83216',
+        },
         surface: '#FFFFFF',
         sidebar: {
-          DEFAULT: '#1E1B4B',
-          hover: '#292569',
-          active: '#312E81',
-          text: '#FFFFFF',
-          muted: '#A5B4FC',
-        },
-        border: {
-          DEFAULT: '#E8EAF0',
-          subtle: '#F1F2F6',
-          strong: '#D2D5E0',
-        },
-        primary: {
-          DEFAULT: '#111827',
-          secondary: '#6B7280',
-          muted: '#9CA3AF',
-        },
-        // Deep Indigo brand colour
-        brand: {
-          DEFAULT: '#3F3DDB',
-          hover: '#3230C8',
-          light: '#EEF0FD',
-          border: '#D8DAFA',
-        },
-        // Teal secondary accent
-        tealAccent: {
-          DEFAULT: '#0EA5A4',
-          hover: '#0D9488',
-          light: '#E6F7F7',
-          border: '#B2EBEB',
-        },
-        // Status soft pills
-        status: {
-          safe: {
-            text: '#15803D',
-            bg: '#E8F7EE',
-            border: '#C6F0D4',
-          },
-          caution: {
-            text: '#B45309',
-            bg: '#FFF4DB',
-            border: '#FFE5A3',
-          },
-          danger: {
-            text: '#B42318',
-            bg: '#FDECEA',
-            border: '#FAC7C3',
-          },
-          neutral: {
-            text: '#4B5563',
-            bg: '#F3F4F6',
-            border: '#E5E7EB',
-          },
+          DEFAULT: '#0F3D33',
+          hover: '#194E42',
+          active: '#FBF7F0',
+          text: '#FBF7F0',
+          muted: '#8FB4AC',
         },
       },
       fontFamily: {
+        serif: ['Fraunces', 'Georgia', 'serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        heading: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+        heading: ['Fraunces', 'Georgia', 'serif'],
       },
       borderRadius: {
-        card: '14px',
+        '2xl': '20px',
+        '3xl': '24px',
+        card: '24px',
       },
       boxShadow: {
-        card: '0 1px 2px rgba(16,24,40,0.05), 0 4px 12px rgba(16,24,40,0.04)',
-        'card-hover': '0 4px 8px rgba(16,24,40,0.06), 0 12px 20px rgba(16,24,40,0.06)',
+        soft: '0 2px 8px rgba(15, 61, 51, 0.04), 0 8px 24px rgba(15, 61, 51, 0.05)',
+        'soft-hover': '0 4px 12px rgba(15, 61, 51, 0.08), 0 16px 32px rgba(15, 61, 51, 0.08)',
+        card: '0 2px 8px rgba(15, 61, 51, 0.04), 0 8px 24px rgba(15, 61, 51, 0.05)',
+        'card-hover': '0 4px 12px rgba(15, 61, 51, 0.08), 0 16px 32px rgba(15, 61, 51, 0.08)',
       },
       transitionDuration: {
-        DEFAULT: '180ms',
+        DEFAULT: '250ms',
       },
     },
   },

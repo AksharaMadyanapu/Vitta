@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -8,103 +9,329 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
   ReferenceLine,
-  ReferenceArea,
 } from 'recharts';
 import {
-  Play,
+  ChevronDown,
+  ChevronUp,
   RotateCcw,
-  Sparkles,
-  Sliders,
-  CheckCircle2,
-  AlertTriangle,
-  History,
-  Info,
   Calendar,
-  ArrowRight,
-  TrendingUp,
+  Repeat,
+  MessageCircle,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
-import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ChartTooltip } from '@/components/ui/ChartTooltip';
-import { PageGuidance } from '@/components/onboarding/PageGuidance';
-import { InfoTooltip } from '@/components/onboarding/InfoTooltip';
-import { NextStepStrip } from '@/components/onboarding/NextStepStrip';
-import { RecommendationsList } from '@/components/recommendations/RecommendationsList';
-import { api, ForecastData, OverrideItem, BacktestData, ActionCardItem } from '@/api/client';
-import { formatINR, formatCompactINR } from '@/utils/format';
-import { useToast } from '@/components/ui/Toast';
+import { WhatsAppModal } from '@/components/reminders/WhatsAppModal';
+import { api, ForecastData, OverrideItem, BacktestData, ReminderItem } from '@/api/client';
+import { formatINR, formatCompactINR, formatDate } from '@/utils/format';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface PartyInfo {
+  id: number;
+  name: string;
+  avg_delay_days: number;
+  delay_profile: number[];
+  contact_person?: string;
+  phone?: string;
+  risk_level: string;
+}
+
+interface FixProbs {
+  saiCollect: number | null;
+  steelDelay: number | null;
+  saiEarly: number | null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const AVATAR_COLOURS = [
+  'bg-[#CDEBDD] text-[#0F3D33]',
+  'bg-[#FFE8A3] text-[#8A5B00]',
+  'bg-[#FDEEE9] text-[#C13A1E]',
+  'bg-[#E8F5FF] text-[#1D4E89]',
+  'bg-[#F1E9DC] text-[#6B4B2C]',
+];
+
+function avatarColour(idx: number) {
+  return AVATAR_COLOURS[idx % AVATAR_COLOURS.length];
+}
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+function daysFromNow(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return Math.round(diff / 86_400_000);
+}
+
+function friendlyShortfallDate(dateStr: string | null): string {
+  if (!dateStr) return '';
+  return formatDate(dateStr, 'd MMMM');
+}
+
+/** Build a friendly, plain-English title for a driver card */
+function driverTitle(
+  type: string,
+  amount: number,
+  counterpartyName: string | null,
+  dueDate: string | null
+): string {
+  if (type === 'receivable') {
+    return `${counterpartyName ?? 'A customer'} owes you ${formatCompactINR(amount)}`;
+  }
+  if (type === 'payable') {
+    const dateStr = dueDate ? ` on ${formatDate(dueDate, 'd MMM')}` : '';
+    return `${formatCompactINR(amount)} due to ${counterpartyName ?? 'a supplier'}${dateStr}`;
+  }
+  // recurring
+  if (amount >= 500000) return `Monthly salaries — ${formatCompactINR(amount)}`;
+  return `Monthly GST — ${formatCompactINR(amount)}`;
+}
+
+/** Build a friendly one-sentence explanation */
+function driverSentence(
+  type: string,
+  amount: number,
+  counterpartyName: string | null,
+  dueDate: string | null,
+  avgDelay: number | null
+): string {
+  if (type === 'receivable' && avgDelay !== null) {
+    const expected = dueDate
+      ? formatDate(
+          new Date(new Date(dueDate).getTime() + avgDelay * 86_400_000).toISOString(),
+          'd MMM'
+        )
+      : null;
+    const originalDue = dueDate ? formatDate(dueDate, 'd MMM') : null;
+    if (expected && originalDue) {
+      return `${counterpartyName ?? 'This customer'} usually pays about ${Math.round(avgDelay)} days late, so expect the money around ${expected} instead of ${originalDue}.`;
+    }
+    return `${counterpartyName ?? 'This customer'} usually pays about ${Math.round(avgDelay)} days late.`;
+  }
+  if (type === 'payable') {
+    const dateStr = dueDate ? ` on ${formatDate(dueDate, 'd MMM')}` : '';
+    return `${formatINR(amount)} is due to ${counterpartyName ?? 'a supplier'}${dateStr} — the largest payment in this period.`;
+  }
+  // recurring
+  if (amount >= 500000) {
+    return `Staff salaries and factory wages of ${formatINR(amount)} come out on the 1st of each month.`;
+  }
+  return `GST liability of ${formatINR(amount)} comes out around the 20th of each month.`;
+}
+
+/** Summary sentence from top 2 drivers */
+function summaryFromDrivers(
+  drivers: ForecastData['top_drivers'],
+  parties: Record<number, PartyInfo>
+): string {
+  if (!drivers || drivers.length === 0) return '';
+  const parts = drivers.slice(0, 2).map((d) => {
+    const name = d.counterparty_id ? (parties[d.counterparty_id]?.name ?? null) : null;
+    if (d.type === 'receivable' && name) {
+      const delay = parties[d.counterparty_id!]?.avg_delay_days;
+      return delay ? `${name} is paying ${Math.round(delay)} days late` : `${name} owes ${formatCompactINR(d.amount)}`;
+    }
+    if (d.type === 'payable' && name) {
+      return `a ${formatCompactINR(d.amount)} payment to ${name} is due${d.due_date ? ' on ' + formatDate(d.due_date, 'd MMM') : ''}`;
+    }
+    if (d.type === 'recurring') {
+      return d.amount >= 500000 ? `monthly salaries of ${formatCompactINR(d.amount)}` : `GST of ${formatCompactINR(d.amount)}`;
+    }
+    return '';
+  }).filter(Boolean);
+  if (parts.length === 0) return '';
+  return 'Mainly because ' + parts.join(' and ') + '.';
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+/** Delay-history dots (last 6 payments) */
+function DelayDots({ profile }: { profile: number[] }) {
+  const dots = profile.slice(-6);
+  return (
+    <div className="flex items-center gap-1.5">
+      {dots.map((days, i) => {
+        const colour =
+          days < 7 ? 'bg-[#CDEBDD]' : days < 20 ? 'bg-[#FFE8A3]' : 'bg-[#FDEEE9]';
+        const label = days < 7 ? 'On time' : days < 20 ? `${days}d late` : `${days}d late`;
+        return (
+          <span
+            key={i}
+            title={label}
+            className={`w-3 h-3 rounded-full ${colour} border border-white`}
+          />
+        );
+      })}
+      <span className="text-xs text-[#527A71] ml-1">Last 6 payments</span>
+    </div>
+  );
+}
+
+/** Type chip */
+function TypeChip({ type }: { type: string }) {
+  if (type === 'receivable')
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FDEEE9] text-[#C13A1E] text-[11px] font-semibold">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B4A] inline-block" />
+        Paying late
+      </span>
+    );
+  if (type === 'payable')
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFE8A3] text-[#8A5B00] text-[11px] font-semibold">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#D4A017] inline-block" />
+        Big bill due
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#F1E9DC] text-[#6B4B2C] text-[11px] font-semibold">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#C8A97B] inline-block" />
+      Regular payment
+    </span>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export const ForecastPage: React.FC = () => {
   const [horizon, setHorizon] = useState<14 | 30 | 60>(30);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const { success } = useToast();
 
-  // What-if sliders state
-  const [saiEarlierDays, setSaiEarlierDays] = useState<number>(0);
-  const [tataDelayDays, setTataDelayDays] = useState<number>(0);
-  const [collectSaiThisWeek, setCollectSaiThisWeek] = useState<boolean>(false);
+  // Fix toggles
+  const [saiCollectNow, setSaiCollectNow] = useState(false);
+  const [steelDelay15d, setSteelDelay15d] = useState(false);
+  const [saiEarly10d, setSaiEarly10d] = useState(false);
 
-  // Active overrides forecast data
+  // Pre-computed fix probabilities (fetched on mount)
+  const [fixProbs, setFixProbs] = useState<FixProbs>({ saiCollect: null, steelDelay: null, saiEarly: null });
+
+  // Active overrides data (for chart + hero when fix is on)
   const [overrideData, setOverrideData] = useState<ForecastData | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
 
-  // Base forecast query
-  const { data: baseData, isLoading: baseLoading, refetch: refetchBase } = useQuery<ForecastData>({
+  // Expanded driver card
+  const [expandedDriver, setExpandedDriver] = useState<number | null>(null);
+  const [showAllDrivers, setShowAllDrivers] = useState(false);
+
+  // Collapsible sections
+  const [showChart, setShowChart] = useState(false);
+  const [showBacktest, setShowBacktest] = useState(false);
+
+  // Party data cache
+  const [parties, setParties] = useState<Record<number, PartyInfo>>({});
+
+  // WhatsApp modal
+  const [whatsappReminder, setWhatsappReminder] = useState<ReminderItem | null>(null);
+
+  // ── Queries ──────────────────────────────────────────────────────────────
+
+  const { data: baseData } = useQuery<ForecastData>({
     queryKey: ['forecast', horizon],
     queryFn: () => api.getForecast(horizon),
   });
 
-  // Backtest query
-  const { data: backtestData, isLoading: backtestLoading } = useQuery<BacktestData>({
+  const { data: backtestData } = useQuery<BacktestData>({
     queryKey: ['backtest', 21],
     queryFn: () => api.getBacktest(21),
   });
 
-  // Recommendations query
-  const { data: recommendations = [] } = useQuery<ActionCardItem[]>({
-    queryKey: ['recommendations'],
-    queryFn: () => api.getRecommendations(),
+  const { data: reminders } = useQuery<ReminderItem[]>({
+    queryKey: ['reminders'],
+    queryFn: api.getReminders,
   });
 
-  // Active data is overridden if any slider is moved
-  const hasOverrides = saiEarlierDays > 0 || tataDelayDays > 0 || collectSaiThisWeek;
-  const currentData = hasOverrides && overrideData ? overrideData : baseData;
+  // ── Load party data for top drivers ─────────────────────────────────────
 
-  // Run simulation with overrides
+  useEffect(() => {
+    if (!baseData?.top_drivers) return;
+    const ids = baseData.top_drivers
+      .map((d) => d.counterparty_id)
+      .filter((id): id is number => id !== null);
+
+    const missing = ids.filter((id) => !parties[id]);
+    if (missing.length === 0) return;
+
+    missing.forEach(async (id) => {
+      try {
+        const res = await fetch(`/api/parties/${id}`);
+        if (res.ok) {
+          const p = await res.json();
+          setParties((prev) => ({ ...prev, [id]: p }));
+        }
+      } catch {
+        // ignore
+      }
+    });
+  }, [baseData?.top_drivers]);
+
+  // ── Pre-fetch all 3 fix scenarios in parallel ────────────────────────────
+
+  useEffect(() => {
+    if (!baseData) return;
+    const saiDriver = baseData.top_drivers?.find((d) => d.counterparty_id === 9);
+    const tataDriver = baseData.top_drivers?.find((d) => d.counterparty_id === 13);
+    const saiInvId = saiDriver?.invoice_id ?? 115;
+    const tataId = tataDriver?.counterparty_id ?? 13;
+
+    (async () => {
+      try {
+        const [fix1, fix2, fix3] = await Promise.all([
+          api.postForecast(horizon, [{ invoice_id: saiInvId, paid_on_day: 3 }]),
+          api.postForecast(horizon, [{ supplier_id: tataId, delay_days: 15 }]),
+          api.postForecast(horizon, [{ customer_id: 9, pays_days_earlier: 10 }]),
+        ]);
+        const getProb = (d: ForecastData) =>
+          horizon === 14 ? d.shortfall_prob_14 : horizon === 60 ? d.shortfall_prob_60 : d.shortfall_prob_30;
+        setFixProbs({
+          saiCollect: getProb(fix1),
+          steelDelay: getProb(fix2),
+          saiEarly: getProb(fix3),
+        });
+      } catch {
+        // non-fatal
+      }
+    })();
+  }, [baseData, horizon]);
+
+  // ── Run overrides simulation when a toggle changes ───────────────────────
+
+  const hasOverrides = saiCollectNow || steelDelay15d || saiEarly10d;
+
   const runOverridesSimulation = useCallback(
-    async (saiDays: number, steelDelay: number, collectThisWeek: boolean) => {
+    async (collectNow: boolean, delaySteel: boolean, earlySai: boolean) => {
+      if (!baseData) return;
       setIsSimulating(true);
       const overrides: OverrideItem[] = [];
+      const saiDriver = baseData.top_drivers?.find((d) => d.counterparty_id === 9);
+      const tataDriver = baseData.top_drivers?.find((d) => d.counterparty_id === 13);
 
-      // Sai Auto Parts has customer_id 9 (or look up from top drivers)
-      const saiDriver = baseData?.top_drivers?.find((d) => d.plain_reason.includes('Sai Auto'));
-      const saiId = saiDriver?.counterparty_id || 9;
-
-      // Tata Steel has supplier_id 1
-      const tataDriver = baseData?.top_drivers?.find((d) => d.plain_reason.includes('Tata Steel'));
-      const tataId = tataDriver?.counterparty_id || 13;
-
-      if (collectThisWeek) {
-        // Collect Sai Auto ₹9L invoice on day 3
-        const saiInvId = saiDriver?.invoice_id || 19;
-        overrides.push({ invoice_id: saiInvId, paid_on_day: 3 });
-      } else if (saiDays > 0) {
-        overrides.push({ customer_id: saiId, pays_days_earlier: saiDays });
+      if (collectNow) {
+        overrides.push({ invoice_id: saiDriver?.invoice_id ?? 115, paid_on_day: 3 });
+      } else if (earlySai) {
+        overrides.push({ customer_id: 9, pays_days_earlier: 10 });
       }
-
-      if (steelDelay > 0) {
-        overrides.push({ supplier_id: tataId, delay_days: steelDelay });
+      if (delaySteel) {
+        overrides.push({ supplier_id: tataDriver?.counterparty_id ?? 13, delay_days: 15 });
       }
 
       try {
         const res = await api.postForecast(horizon, overrides);
         setOverrideData(res);
       } catch (err) {
-        console.error('Failed to run overrides:', err);
+        console.error('Override simulation failed:', err);
       } finally {
         setIsSimulating(false);
       }
@@ -112,644 +339,625 @@ export const ForecastPage: React.FC = () => {
     [baseData, horizon]
   );
 
-  // Trigger when sliders change with 300ms debounce
   useEffect(() => {
     if (!hasOverrides) {
       setOverrideData(null);
       return;
     }
     const timer = setTimeout(() => {
-      runOverridesSimulation(saiEarlierDays, tataDelayDays, collectSaiThisWeek);
+      runOverridesSimulation(saiCollectNow, steelDelay15d, saiEarly10d);
     }, 200);
     return () => clearTimeout(timer);
-  }, [saiEarlierDays, tataDelayDays, collectSaiThisWeek, hasOverrides, runOverridesSimulation]);
+  }, [saiCollectNow, steelDelay15d, saiEarly10d, hasOverrides, runOverridesSimulation]);
 
-  const handleResetSliders = () => {
-    setSaiEarlierDays(0);
-    setTataDelayDays(0);
-    setCollectSaiThisWeek(false);
-    setOverrideData(null);
-    success('Scenarios reset', 'Restored base baseline forecast.');
-  };
+  // ── Derived values ───────────────────────────────────────────────────────
 
-  // Transform data for chart
+  const displayData = hasOverrides && overrideData ? overrideData : baseData;
+
+  const shortfallRisk = displayData
+    ? horizon === 14
+      ? displayData.shortfall_prob_14
+      : horizon === 60
+      ? displayData.shortfall_prob_60
+      : displayData.shortfall_prob_30
+    : 0;
+
+  const baseRisk = baseData
+    ? horizon === 14
+      ? baseData.shortfall_prob_14
+      : horizon === 60
+      ? baseData.shortfall_prob_60
+      : baseData.shortfall_prob_30
+    : 0;
+
+  const shortfallDate = displayData?.expected_shortfall_date;
+  const shortfallAmount = displayData?.expected_shortfall_amount;
+
+  const daysToShortfall = daysFromNow(shortfallDate ?? null);
+  const p10Min = displayData?.p10 ? Math.min(...displayData.p10) : null;
+
+  const isSafe = shortfallRisk < 0.2;
+  const isWatch = !isSafe && shortfallRisk < 0.5;
+  const isRisk = !isSafe && !isWatch;
+
+  const heroClass = isSafe
+    ? 'bg-[#CDEBDD]'
+    : isWatch
+    ? 'bg-[#FFE8A3]'
+    : 'bg-[#FDEEE9]';
+
+  const totalImpact = useMemo(
+    () => (baseData?.top_drivers ?? []).reduce((sum, d) => sum + Math.abs(d.impact), 0),
+    [baseData]
+  );
+
+  const drivers = baseData?.top_drivers ?? [];
+
+  // Chart data
   const chartPoints = useMemo(() => {
-    if (!currentData?.days) return [];
-    return currentData.days.map((dayStr, idx) => {
+    if (!displayData?.days) return [];
+    return displayData.days.map((dayStr, idx) => {
       const d = new Date(dayStr);
-      const label = idx === 0 ? 'Today' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      const p10Val = Math.round(currentData.p10[idx] || 0);
-      const p50Val = Math.round(currentData.p50[idx] || 0);
-      const p90Val = Math.round(currentData.p90[idx] || 0);
+      const label =
+        idx === 0
+          ? 'Today'
+          : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       return {
         day: label,
-        balance: p50Val,
-        p10: p10Val,
-        p90: p90Val,
-        // Range for area
-        range: [p10Val, p90Val],
-        baseBalance: baseData?.p50[idx] ? Math.round(baseData.p50[idx]) : undefined,
+        p50: Math.round(displayData.p50[idx] || 0),
+        p10: Math.round(displayData.p10[idx] || 0),
+        p90: Math.round(displayData.p90[idx] || 0),
+        range: [
+          Math.round(displayData.p10[idx] || 0),
+          Math.round(displayData.p90[idx] || 0),
+        ],
       };
     });
-  }, [currentData, baseData]);
+  }, [displayData]);
 
-  // Compute runway days for current data
-  const currentRunwayDays = useMemo(() => {
-    if (!currentData?.p50) return 60;
-    const firstNeg = currentData.p50.findIndex((val) => val < 0);
-    return firstNeg === -1 ? 60 : firstNeg;
-  }, [currentData]);
+  // Find matching reminder for a driver (by invoice_id)
+  const findReminder = (invoiceId: number | null) =>
+    invoiceId
+      ? (reminders ?? []).find((r) => r.invoice_id === invoiceId) ?? null
+      : null;
 
-  const baseRunwayDays = useMemo(() => {
-    if (!baseData?.p50) return 60;
-    const firstNeg = baseData.p50.findIndex((val) => val < 0);
-    return firstNeg === -1 ? 60 : firstNeg;
-  }, [baseData]);
+  // Which driver is this fix associated with?
+  const driverHasFix = (driver: ForecastData['top_drivers'][0]) => {
+    if (driver.counterparty_id === 9 && (saiCollectNow || saiEarly10d)) return true;
+    if (driver.counterparty_id === 13 && steelDelay15d) return true;
+    return false;
+  };
 
-  // Format shortfall date
-  const shortfallDateStr = currentData?.expected_shortfall_date
-    ? new Date(currentData.expected_shortfall_date).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    : null;
+  // ── Render ───────────────────────────────────────────────────────────────
+
+  const visibleDrivers = showAllDrivers ? drivers : drivers.slice(0, 3);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 max-w-5xl mx-auto">
       <PageHeader
-        title="Cash forecast"
-        description="Predict your daily bank balance and test preventive actions to avoid cash shortfalls."
-        action={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                handleResetSliders();
-                refetchBase();
-              }}
-              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-            >
-              Refresh
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              isLoading={isSimulating}
-              onClick={() => {
-                runOverridesSimulation(saiEarlierDays, tataDelayDays, collectSaiThisWeek);
-                success('Simulation refreshed', 'Ran 2,000 Monte Carlo trajectories.');
-              }}
-              leftIcon={<Play className="w-3.5 h-3.5" />}
-            >
-              Re-run engine
-            </Button>
-          </div>
-        }
+        title="Will I run short of cash?"
+        description="We simulated 2,000 cash paths based on your customers' real payment history."
       />
 
-      {/* ── Time window selector & Plain language summary banner ──────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-[12px] border border-[#E8EAF0] shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-[#6B7280]">Forecast window:</span>
+      {/* ── HERO PANEL ──────────────────────────────────────────────────────── */}
+      <motion.div
+        className={`relative rounded-[28px] p-8 md:p-10 ${heroClass} overflow-hidden`}
+        animate={{ opacity: isSimulating ? 0.7 : 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Horizon toggle — top right */}
+        <div className="absolute top-6 right-6 flex items-center gap-1 bg-white/60 backdrop-blur-sm p-1 rounded-full shadow-soft">
           {([14, 30, 60] as const).map((h) => (
             <button
               key={h}
               onClick={() => setHorizon(h)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
                 horizon === h
-                  ? 'bg-[#3F3DDB] text-white shadow-sm'
-                  : 'bg-[#F5F6FA] text-[#4B5563] hover:text-[#111827] hover:bg-[#EEF0FD]'
+                  ? 'bg-[#0F3D33] text-white shadow-soft'
+                  : 'text-[#527A71] hover:text-[#0F3D33]'
               }`}
             >
-              {h} days
+              {h}d
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-          <span className="w-2 h-2 rounded-full bg-[#15803D]" />
-          <span>2,000 vectorised NumPy simulations</span>
-          <span>·</span>
-          <span>Responded in {currentData?.elapsed_ms?.toFixed(0) || 20}ms</span>
-        </div>
-      </div>
-
-      {/* ── Plain English warning alert banner ──────────────────────────── */}
-      <div
-        className={`p-4 rounded-[12px] border transition-all ${
-          currentData?.shortfall_prob_30 && currentData.shortfall_prob_30 > 0.5
-            ? 'bg-[#FEF3F2] border-[#FECDCA] text-[#B42318]'
-            : currentData?.shortfall_prob_30 && currentData.shortfall_prob_30 > 0.2
-            ? 'bg-[#FFF4DB] border-[#FDE68A] text-[#B45309]'
-            : 'bg-[#E8F7EE] border-[#A6F4C5] text-[#15803D]'
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          {currentData?.shortfall_prob_30 && currentData.shortfall_prob_30 > 0.5 ? (
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-          ) : (
-            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-          )}
-          <div className="text-xs sm:text-sm leading-relaxed">
-            {horizon === 14 ? (
-              <p>
-                <strong>14-Day Outlook is Safe:</strong> Your starting bank balance and expected receipts from
-                Sundaram Fasteners are expected to cover all operational expenses and bills for the next 14 days with 0% shortfall risk.
-              </p>
-            ) : hasOverrides ? (
-              <p>
-                <strong>What-If Scenario Active:</strong> With your proposed adjustments, 30-day shortfall probability drops from{' '}
-                <strong className="underline">{(baseData?.shortfall_prob_30 || 0.7) * 100}%</strong> down to{' '}
-                <strong className="underline">{(currentData?.shortfall_prob_30 || 0) * 100}%</strong>, extending your cash runway from{' '}
-                <strong>{baseRunwayDays} days</strong> to{' '}
-                <strong>{currentRunwayDays >= 60 ? '60+ days' : `${currentRunwayDays} days`}</strong>.
-              </p>
+        {/* Headline */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${shortfallDate}-${Math.round(shortfallRisk * 100)}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.3 }}
+          >
+            {isSafe ? (
+              <h1 className="font-serif text-[36px] md:text-[40px] font-semibold text-[#0F3D33] leading-tight max-w-xl pr-24">
+                Your cash looks safe for the next {horizon} days.
+              </h1>
             ) : (
-              <p>
-                In the next 30 days there is a{' '}
-                <strong>{Math.round((currentData?.shortfall_prob_30 || 0.7) * 100)}% chance</strong> your bank balance drops below zero around{' '}
-                <strong>{shortfallDateStr || '5 December'}</strong>. The main reasons are a chronically delayed payment from{' '}
-                <strong>Sai Auto Parts (₹9L)</strong> and the <strong>Tata Steel bill (₹7.5L)</strong> falling due in the same week as payroll.
-              </p>
+              <h1 className="font-serif text-[36px] md:text-[40px] font-semibold text-[#0F3D33] leading-tight max-w-xl pr-24">
+                You'll likely run short of cash around{' '}
+                {shortfallDate ? friendlyShortfallDate(shortfallDate) : '5 December'}.
+              </h1>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* ── Summary Cards ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          title={`Shortfall risk (${horizon} days)`}
-          value={Math.round(
-            (horizon === 14
-              ? currentData?.shortfall_prob_14 || 0
-              : horizon === 30
-              ? currentData?.shortfall_prob_30 || 0.7
-              : currentData?.shortfall_prob_60 || 0.75) * 100
-          )}
-          isCurrency={false}
-          suffix="%"
-          subtitle={
-            horizon === 14
-              ? 'Zero shortfall expected in 14 days'
-              : hasOverrides
-              ? `Reduced from ${(baseData?.shortfall_prob_30 || 0.7) * 100}%`
-              : 'High risk without early collection'
-          }
-          statusVariant={
-            (horizon === 14
-              ? (currentData?.shortfall_prob_14 ?? 0)
-              : (currentData?.shortfall_prob_30 ?? 0.7)) > 0.5
-              ? 'danger'
-              : 'safe'
-          }
-        />
-        <StatCard
-          title="Lowest expected bank balance"
-          value={currentData?.p50 ? Math.min(...currentData.p50) : 0}
-          subtitle={
-            (currentData?.p50 ? Math.min(...currentData.p50) : 0) < 0
-              ? 'Overdraft expected'
-              : 'Buffer stays safely positive'
-          }
-          statusVariant={
-            (currentData?.p50 ? Math.min(...currentData.p50) : 0) < 0 ? 'danger' : 'safe'
-          }
-        />
-        <StatCard
-          title="Cash Runway"
-          value={currentRunwayDays}
-          isCurrency={false}
-          suffix={currentRunwayDays >= 60 ? '+ days' : ' days'}
-          subtitle={
-            hasOverrides
-              ? `Improved from ${baseRunwayDays} days`
-              : shortfallDateStr
-              ? `Runs out around ${shortfallDateStr}`
-              : 'Safe for entire horizon'
-          }
-          statusVariant={currentRunwayDays < 30 ? 'danger' : 'safe'}
-        />
-      </div>
-
-      {/* ── Forecast Chart with Likely Range Band & Danger Zone ─────────── */}
-      <Card id="tour-forecast-chart" className="overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E8EAF0] gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold font-heading text-[#111827]">
-                Projected cash balance ({horizon} days)
-              </h3>
-              <InfoTooltip content="p50 is the median trajectory. Shaded lavender band represents the 10th to 90th percentile likely range from 2,000 simulations." />
-            </div>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              Simulated using actual customer payment delays and scheduled vendor payables
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5 text-[#3F3DDB] font-medium">
-              <span className="w-3 h-1 bg-[#3F3DDB] rounded-full" />
-              Expected cash (p50)
-            </span>
-            <span className="flex items-center gap-1.5 text-[#6B7280]">
-              <span className="w-3 h-2 bg-[#EEF0FD] border border-[#CBD5E1] rounded-sm" />
-              Likely range (p10–p90)
-            </span>
-            <span className="flex items-center gap-1.5 text-[#B42318] font-medium">
-              <span className="w-3 h-1 bg-[#EF4444] border-dashed border-t border-[#EF4444]" />
-              Danger zone (&lt; ₹0)
-            </span>
-          </div>
-        </div>
-
-        <div className="pt-4 h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={chartPoints}
-              margin={{ top: 12, right: 16, left: -5, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="rangeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3F3DDB" stopOpacity={0.12} />
-                  <stop offset="100%" stopColor="#3F3DDB" stopOpacity={0.03} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F6" />
-              <XAxis
-                dataKey="day"
-                stroke="#9CA3AF"
-                fontSize={11}
-                tickLine={false}
-                axisLine={{ stroke: '#E8EAF0' }}
-              />
-              <YAxis
-                stroke="#9CA3AF"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`}
-              />
-              <Tooltip content={<ChartTooltip />} />
-
-              {/* Red Danger Zone below 0 with Direct Shading */}
-              <ReferenceArea
-                y1={-1500000}
-                y2={0}
-                fill="#FEF3F2"
-                fillOpacity={0.8}
-                strokeOpacity={0}
-              />
-              <ReferenceLine
-                y={0}
-                stroke="#EF4444"
-                strokeDasharray="4 4"
-                strokeWidth={1.5}
-                label={{
-                  value: '₹0 Overdraft Threshold',
-                  fill: '#EF4444',
-                  fontSize: 11,
-                  position: 'insideBottomLeft',
-                  offset: 8,
-                }}
-              />
-
-              {/* Range Area (p10 to p90) */}
-              <Area
-                type="monotone"
-                dataKey="range"
-                fill="url(#rangeGrad)"
-                stroke="#CBD5E1"
-                strokeWidth={0.5}
-                name="Likely Range (p10–p90)"
-              />
-
-              {/* Baseline comparison if overridden */}
-              {hasOverrides && (
-                <Line
-                  type="monotone"
-                  dataKey="baseBalance"
-                  stroke="#9CA3AF"
-                  strokeDasharray="4 4"
-                  strokeWidth={1.75}
-                  dot={false}
-                  name="Without actions"
-                />
-              )}
-
-              {/* Main Expected Cash Line */}
-              <Line
-                type="monotone"
-                dataKey="balance"
-                name="Expected cash (p50)"
-                stroke="#3F3DDB"
-                strokeWidth={2.5}
-                dot={{ r: 2.5, fill: '#3F3DDB' }}
-                activeDot={{ r: 5, fill: '#3F3DDB', stroke: '#FFFFFF', strokeWidth: 2 }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      {/* ── "WHAT IF?" INTERACTIVE EXPERIMENT PANEL ─────────────────────── */}
-      <Card className="border-2 border-[#EEF0FD]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E8EAF0] gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#EEF0FD] text-[#3F3DDB] flex items-center justify-center">
-                <Sliders className="w-4 h-4" />
-              </div>
-              <h3 className="text-base font-bold font-heading text-[#111827]">
-                What if? Test solutions to prevent the cash shortage
-              </h3>
-            </div>
-            <p className="text-xs text-[#6B7280] mt-1">
-              Move these levers to re-simulate all 2,000 trajectories in real time and see how your runway improves.
-            </p>
-          </div>
-
-          {hasOverrides && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleResetSliders}
-              leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-            >
-              Reset levers
-            </Button>
-          )}
-        </div>
-
-        <div className="pt-5 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Lever 1: Sai Auto Parts */}
-          <div className="p-4 rounded-[12px] bg-[#F5F6FA] border border-[#E8EAF0] space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111827]">
-                Sai Auto Parts pays earlier
-              </label>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white border border-[#E8EAF0] text-[#3F3DDB]">
-                +{saiEarlierDays} days
-              </span>
-            </div>
-            <p className="text-[11px] text-[#6B7280] leading-snug">
-              Sai owes ₹9,00,000 and is chronically late. Follow up to speed up collection.
-            </p>
-            <input
-              type="range"
-              min="0"
-              max="20"
-              step="1"
-              value={saiEarlierDays}
-              disabled={collectSaiThisWeek}
-              onChange={(e) => setSaiEarlierDays(Number(e.target.value))}
-              className="w-full accent-[#3F3DDB] cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-[#9CA3AF]">
-              <span>Normal delay (0d)</span>
-              <span>10d earlier</span>
-              <span>20d earlier</span>
-            </div>
-          </div>
-
-          {/* Lever 2: Delay Tata Steel Payment */}
-          <div className="p-4 rounded-[12px] bg-[#F5F6FA] border border-[#E8EAF0] space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#111827]">
-                Delay Tata Steel ₹7.5L bill
-              </label>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white border border-[#E8EAF0] text-[#B45309]">
-                +{tataDelayDays} days
-              </span>
-            </div>
-            <p className="text-[11px] text-[#6B7280] leading-snug">
-              Request a payment extension on the ₹7,50,000 raw material coil batch.
-            </p>
-            <input
-              type="range"
-              min="0"
-              max="20"
-              step="1"
-              value={tataDelayDays}
-              onChange={(e) => setTataDelayDays(Number(e.target.value))}
-              className="w-full accent-[#B45309] cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-[#9CA3AF]">
-              <span>Pay on due date</span>
-              <span>+10 days</span>
-              <span>+20 days</span>
-            </div>
-          </div>
-
-          {/* Lever 3: Instant Collection Toggle */}
-          <div className="p-4 rounded-[12px] bg-[#F5F6FA] border border-[#E8EAF0] flex flex-col justify-between space-y-3">
-            <div>
-              <label className="text-xs font-bold text-[#111827] block">
-                Collect ₹9L invoice this week
-              </label>
-              <p className="text-[11px] text-[#6B7280] mt-1 leading-snug">
-                Assume immediate collection of Sai Auto's overdue invoice within 3 days.
-              </p>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setCollectSaiThisWeek(!collectSaiThisWeek)}
-                className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                  collectSaiThisWeek
-                    ? 'bg-[#15803D] text-white shadow-sm'
-                    : 'bg-white border border-[#CBD5E1] text-[#374151] hover:bg-[#F9FAFB]'
-                }`}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {collectSaiThisWeek ? 'Lever Applied (Collected Day 3)' : 'Apply Collection Lever'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Live Before & After Comparison Strip */}
-        {hasOverrides && (
-          <div className="mt-5 p-3.5 rounded-[10px] bg-[#EEF0FD] border border-[#C7D2FE] flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-4">
-              <span className="font-semibold text-[#111827]">Impact of selected levers:</span>
-              <span>
-                Runway:{' '}
-                <strong className="text-[#B42318] line-through mr-1">{baseRunwayDays} days</strong>
-                <strong className="text-[#15803D]">
-                  → {currentRunwayDays >= 60 ? '60+ days (Safe)' : `${currentRunwayDays} days`}
-                </strong>
-              </span>
-              <span>·</span>
-              <span>
-                30-day shortfall risk:{' '}
-                <strong className="text-[#B42318] line-through mr-1">
-                  {Math.round((baseData?.shortfall_prob_30 || 0.7) * 100)}%
-                </strong>
-                <strong className="text-[#15803D]">
-                  → {Math.round((currentData?.shortfall_prob_30 || 0) * 100)}%
-                </strong>
-              </span>
-            </div>
-
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                success('Actions queued', 'Added recommended collection and delay reminders to your schedule.');
-              }}
-            >
-              Apply to schedule
-            </Button>
-          </div>
-        )}
-      </Card>
-
-      {/* ── RECOMMENDED ACTIONS CARDS ─────────────────────────────────── */}
-      <RecommendationsList
-        recommendations={recommendations}
-        maxItems={4}
-        onTakeAction={(item) => {
-          if (item.id === 'act-chase-sai') {
-            setSaiEarlierDays(15);
-          } else if (item.id === 'act-discount-sai') {
-            setCollectSaiThisWeek(true);
-          } else if (item.id === 'act-delay-tata') {
-            setTataDelayDays(15);
-          }
-          success('Lever applied to simulation', `Updated forecast with: ${item.title}`);
-        }}
-      />
-
-      {/* ── TOP 5 RISK DRIVERS LIST ─────────────────────────────────────── */}
-      <Card>
-        <div className="pb-3 border-b border-[#E8EAF0] mb-3">
-          <h3 className="text-base font-bold font-heading text-[#111827]">
-            Top 5 transactions contributing to your cash risk
-          </h3>
-          <p className="text-xs text-[#6B7280] mt-0.5">
-            Identified by counterfactual re-simulation: these 5 transactions have the greatest influence on your minimum cash balance.
-          </p>
-        </div>
-
-        <div className="divide-y divide-[#F1F2F6]">
-          {(currentData?.top_drivers || []).map((driver) => (
-            <div
-              key={driver.rank}
-              className="py-3.5 first:pt-2 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm"
-            >
-              <div className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#F5F6FA] text-[#6B7280] font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  #{driver.rank}
-                </span>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[#111827] text-xs sm:text-sm">
-                      {driver.invoice_number ? driver.invoice_number : driver.type.toUpperCase()}
-                    </span>
-                    <Badge
-                      variant={
-                        driver.type === 'receivable'
-                          ? 'teal'
-                          : driver.type === 'payable'
-                          ? 'danger'
-                          : 'neutral'
-                      }
-                    >
-                      {driver.type}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-[#4B5563] leading-relaxed max-w-2xl">
-                    {driver.plain_reason}
-                  </p>
+            {/* Three big numbers */}
+            <div className="mt-8 flex flex-wrap gap-8">
+              {/* Days to shortfall */}
+              <div>
+                <div className="font-serif text-[36px] font-semibold text-[#0F3D33] leading-none">
+                  {isSafe ? '—' : daysToShortfall !== null ? `${daysToShortfall}d` : '—'}
+                </div>
+                <div className="text-sm text-[#28584E] mt-1">
+                  {isSafe ? 'No shortfall' : 'from now'}
                 </div>
               </div>
 
-              <div className="sm:text-right shrink-0 pl-9 sm:pl-0">
-                <span className="font-bold text-[#111827] tabular-nums text-sm">
-                  {formatINR(driver.amount)}
-                </span>
-                <p className="text-[11px] text-[#6B7280]">
-                  Impact: ~{formatCompactINR(driver.impact)}
-                </p>
+              {/* Probability */}
+              <div>
+                <div className="font-serif text-[36px] font-semibold text-[#0F3D33] leading-none flex items-baseline gap-2">
+                  {Math.round(shortfallRisk * 100)}%
+                  {hasOverrides && overrideData && (
+                    <span className="text-sm font-sans font-semibold text-[#527A71] bg-white/70 px-2 py-0.5 rounded-full">
+                      was {Math.round(baseRisk * 100)}%
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-[#28584E] mt-1">chance of shortfall</div>
               </div>
-            </div>
-          ))}
-        </div>
-      </Card>
 
-      {/* ── BACKTEST PROOF CARD ─────────────────────────────────────────── */}
-      <Card className="border border-[#CBD5E1] bg-gradient-to-br from-[#FFFFFF] to-[#F8FAFC]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E8EAF0] gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#E0E7FF] text-[#3F3DDB] flex items-center justify-center">
-              <History className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold font-heading text-[#111827]">
-                  Would Runway have caught your October cash crunch?
-                </h3>
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-[#3F3DDB]/10 text-[#3F3DDB]">
-                  Backtest
-                </span>
+              {/* Gap / cushion */}
+              <div>
+                <div className="font-serif text-[36px] font-semibold text-[#0F3D33] leading-none">
+                  {isSafe
+                    ? p10Min !== null && p10Min > 0
+                      ? formatCompactINR(p10Min)
+                      : '—'
+                    : shortfallAmount !== null
+                    ? formatCompactINR(Math.abs(shortfallAmount ?? 0))
+                    : '—'}
+                </div>
+                <div className="text-sm text-[#28584E] mt-1">
+                  {isSafe ? 'minimum cushion' : 'gap expected'}
+                </div>
+                {/* Bad case caption */}
+                {!isSafe && p10Min !== null && p10Min < 0 && (
+                  <div className="text-xs text-[#527A71] mt-0.5">
+                    could reach {formatCompactINR(Math.abs(p10Min))} in a bad case
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-[#6B7280] mt-0.5">
-                Simulating what Runway would have predicted 21 days before your historical October deficit
+            </div>
+
+            {/* Summary sentence */}
+            {!isSafe && baseData?.top_drivers && (
+              <p className="mt-6 text-base text-[#28584E] leading-relaxed max-w-2xl">
+                {summaryFromDrivers(baseData.top_drivers, parties)}
+              </p>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
+
+      {/* ── WHY THIS IS HAPPENING ────────────────────────────────────────────── */}
+      <section className="space-y-5">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-[#0F3D33]">
+            {isSafe ? 'What could affect your cash' : 'Why this is happening'}
+          </h2>
+          <p className="text-sm text-[#527A71] mt-1">
+            These are the transactions that matter most, biggest first.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {visibleDrivers.map((driver, idx) => {
+            const name = driver.counterparty_id
+              ? (parties[driver.counterparty_id]?.name ?? null)
+              : null;
+            const party = driver.counterparty_id ? parties[driver.counterparty_id] : null;
+            const impactPct =
+              totalImpact > 0 ? (Math.abs(driver.impact) / totalImpact) * 100 : 0;
+            const isExpanded = expandedDriver === driver.rank;
+            const fixApplied = driverHasFix(driver);
+            const reminder = findReminder(driver.invoice_id);
+
+            return (
+              <motion.div
+                key={driver.rank}
+                layout
+                className={`rounded-[20px] overflow-hidden shadow-soft transition-all ${
+                  fixApplied ? 'ring-2 ring-[#0F3D33]/30' : ''
+                } bg-white`}
+              >
+                {/* Card header — always visible */}
+                <button
+                  onClick={() => setExpandedDriver(isExpanded ? null : driver.rank)}
+                  className="w-full text-left p-6 flex items-start gap-4 hover:bg-[#F1E9DC]/30 transition-colors"
+                >
+                  {/* Rank */}
+                  <span className="font-serif text-2xl font-semibold text-[#C8B89A] shrink-0 w-7 text-center leading-none mt-1">
+                    {driver.rank}
+                  </span>
+
+                  {/* Avatar */}
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${avatarColour(idx)}`}
+                  >
+                    {driver.type === 'recurring' ? (
+                      driver.amount >= 500000 ? (
+                        <Clock className="w-4 h-4" />
+                      ) : (
+                        <Repeat className="w-4 h-4" />
+                      )
+                    ) : (
+                      getInitials(name ?? 'XX')
+                    )}
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-serif text-base font-semibold text-[#0F3D33]">
+                        {driverTitle(driver.type, driver.amount, name, driver.due_date)}
+                      </span>
+                      <TypeChip type={driver.type} />
+                      {fixApplied && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#0F3D33] text-white text-[11px] font-semibold">
+                          <CheckCircle2 className="w-3 h-3" /> Fix applied
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[#527A71] mt-1 leading-relaxed">
+                      {driverSentence(
+                        driver.type,
+                        driver.amount,
+                        name,
+                        driver.due_date,
+                        party?.avg_delay_days ?? null
+                      )}
+                    </p>
+
+                    {/* Impact bar */}
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-[#527A71]">
+                          Causes about {Math.round(impactPct)}% of the risk
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-[#F1E9DC] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#FF6B4A] rounded-full"
+                          style={{ width: `${Math.min(impactPct, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Amount + chevron */}
+                  <div className="text-right shrink-0 ml-2">
+                    <div className="font-serif text-lg font-semibold text-[#0F3D33]">
+                      {formatINR(driver.amount)}
+                    </div>
+                    <div className="text-[#527A71] mt-2">
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 ml-auto" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 ml-auto" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+
+                {/* Expandable detail */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-6 pt-0 border-t border-[#F1E9DC] flex flex-col sm:flex-row items-start gap-6 mt-0 pt-5">
+                        {/* Payment history dots */}
+                        {party?.delay_profile && party.delay_profile.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-[#527A71] mb-2">
+                              Payment history
+                            </p>
+                            <DelayDots profile={party.delay_profile} />
+                            <p className="text-xs text-[#527A71] mt-1.5">
+                              Average delay: {Math.round(party.avg_delay_days)} days
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Action button */}
+                        <div className="sm:ml-auto">
+                          {driver.type === 'receivable' && reminder && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              leftIcon={<MessageCircle className="w-3.5 h-3.5" />}
+                              onClick={() => setWhatsappReminder(reminder)}
+                            >
+                              Send WhatsApp reminder
+                            </Button>
+                          )}
+                          {driver.type === 'receivable' && !reminder && (
+                            <span className="text-xs text-[#527A71]">No reminder on record</span>
+                          )}
+                          {driver.type === 'payable' && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              leftIcon={<Clock className="w-3.5 h-3.5" />}
+                              onClick={() =>
+                                alert(
+                                  `Draft email to ask ${name ?? 'supplier'} for 15 more days on ${driver.invoice_number ?? 'this invoice'}.`
+                                )
+                              }
+                            >
+                              Ask for 15 more days
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Show more / less toggle */}
+        {drivers.length > 3 && (
+          <button
+            onClick={() => setShowAllDrivers(!showAllDrivers)}
+            className="text-sm font-semibold text-[#0F3D33] hover:underline"
+          >
+            {showAllDrivers ? 'Show fewer' : `Show ${drivers.length - 3} more`}
+          </button>
+        )}
+      </section>
+
+      {/* ── TRY A FIX ───────────────────────────────────────────────────────── */}
+      {!isSafe && (
+        <section className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-2xl font-semibold text-[#0F3D33]">Try a fix</h2>
+              <p className="text-sm text-[#527A71] mt-1">
+                Toggle these on to see how the forecast changes.
               </p>
             </div>
+            {hasOverrides && (
+              <button
+                onClick={() => {
+                  setSaiCollectNow(false);
+                  setSteelDelay15d(false);
+                  setSaiEarly10d(false);
+                }}
+                className="text-sm font-semibold text-[#0F3D33] hover:underline flex items-center gap-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Reset
+              </button>
+            )}
           </div>
-        </div>
 
-        <div className="pt-4 space-y-4">
-          <div className="p-4 rounded-[12px] bg-[#EEF0FD] border border-[#C7D2FE] text-[#1E1B4B]">
-            <p className="text-xs sm:text-sm leading-relaxed">
-              {backtestData?.summary ||
-                'Running the forecast as of 21 days before the cash crunch — Runway predicted a 100% chance of running short within 30 days. Runway would have warned you 21 days earlier.'}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Fix 1: Collect Sai Auto now */}
+            <button
+              onClick={() => {
+                setSaiCollectNow(!saiCollectNow);
+                if (!saiCollectNow) setSaiEarly10d(false);
+              }}
+              className={`p-6 rounded-[20px] text-left transition-all duration-200 shadow-soft ${
+                saiCollectNow
+                  ? 'bg-[#0F3D33] text-[#FBF7F0]'
+                  : 'bg-white text-[#0F3D33] hover:bg-[#F1E9DC]'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${saiCollectNow ? 'bg-white/20' : 'bg-[#CDEBDD]'}`}>
+                <MessageCircle className={`w-4 h-4 ${saiCollectNow ? 'text-[#CDEBDD]' : 'text-[#0F3D33]'}`} />
+              </div>
+              <span className="font-serif text-sm font-semibold block">
+                Collect Sai Auto ₹9L this week
+              </span>
+              <span className={`text-xs mt-1.5 block ${saiCollectNow ? 'text-[#CDEBDD]' : 'text-[#527A71]'}`}>
+                {fixProbs.saiCollect !== null
+                  ? `Chance drops to ${Math.round(fixProbs.saiCollect * 100)}% (from ${Math.round(baseRisk * 100)}%)`
+                  : 'Tap to simulate'}
+              </span>
+            </button>
+
+            {/* Fix 2: Delay Tata Steel 15d */}
+            <button
+              onClick={() => setSteelDelay15d(!steelDelay15d)}
+              className={`p-6 rounded-[20px] text-left transition-all duration-200 shadow-soft ${
+                steelDelay15d
+                  ? 'bg-[#0F3D33] text-[#FBF7F0]'
+                  : 'bg-white text-[#0F3D33] hover:bg-[#F1E9DC]'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${steelDelay15d ? 'bg-white/20' : 'bg-[#FFE8A3]'}`}>
+                <Clock className={`w-4 h-4 ${steelDelay15d ? 'text-[#FFE8A3]' : 'text-[#8A5B00]'}`} />
+              </div>
+              <span className="font-serif text-sm font-semibold block">
+                Delay Tata Steel bill by 15 days
+              </span>
+              <span className={`text-xs mt-1.5 block ${steelDelay15d ? 'text-[#CDEBDD]' : 'text-[#527A71]'}`}>
+                {fixProbs.steelDelay !== null
+                  ? `Chance drops to ${Math.round(fixProbs.steelDelay * 100)}% (from ${Math.round(baseRisk * 100)}%)`
+                  : 'Tap to simulate'}
+              </span>
+            </button>
+
+            {/* Fix 3: Sai Auto pays 10d earlier */}
+            <button
+              onClick={() => {
+                setSaiEarly10d(!saiEarly10d);
+                if (!saiEarly10d) setSaiCollectNow(false);
+              }}
+              className={`p-6 rounded-[20px] text-left transition-all duration-200 shadow-soft ${
+                saiEarly10d
+                  ? 'bg-[#0F3D33] text-[#FBF7F0]'
+                  : 'bg-white text-[#0F3D33] hover:bg-[#F1E9DC]'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${saiEarly10d ? 'bg-white/20' : 'bg-[#FDEEE9]'}`}>
+                <Calendar className={`w-4 h-4 ${saiEarly10d ? 'text-[#FDEEE9]' : 'text-[#C13A1E]'}`} />
+              </div>
+              <span className="font-serif text-sm font-semibold block">
+                Sai Auto pays 10 days earlier
+              </span>
+              <span className={`text-xs mt-1.5 block ${saiEarly10d ? 'text-[#CDEBDD]' : 'text-[#527A71]'}`}>
+                {fixProbs.saiEarly !== null
+                  ? `Chance drops to ${Math.round(fixProbs.saiEarly * 100)}% (from ${Math.round(baseRisk * 100)}%)`
+                  : 'Tap to simulate'}
+              </span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* ── CHART (collapsed) ────────────────────────────────────────────────── */}
+      <div className="rounded-[24px] bg-white shadow-soft overflow-hidden">
+        <button
+          onClick={() => setShowChart(!showChart)}
+          className="w-full p-6 flex items-center justify-between text-left hover:bg-[#F1E9DC]/40 transition-colors"
+        >
+          <div>
+            <h3 className="text-base font-semibold font-serif text-[#0F3D33]">
+              See the cash path day by day
+            </h3>
+            <p className="text-xs text-[#527A71] mt-0.5">
+              {hasOverrides ? 'Showing forecast with your fix applied.' : `30-day cash flow with uncertainty range.`}
             </p>
           </div>
+          <span className="text-xs text-[#0F3D33] font-semibold bg-[#F1E9DC] px-3 py-1 rounded-full flex items-center gap-1 shrink-0">
+            {showChart ? 'Hide' : 'Show chart'}
+            {showChart ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="p-3 rounded-lg bg-white border border-[#E8EAF0]">
-              <span className="text-[#6B7280] block text-[11px]">As of test date:</span>
-              <strong className="text-[#111827] text-sm">
-                {backtestData ? new Date(backtestData.as_of).toLocaleDateString('en-IN') : '14 Sep 2026'}
-              </strong>
-            </div>
-            <div className="p-3 rounded-lg bg-white border border-[#E8EAF0]">
-              <span className="text-[#6B7280] block text-[11px]">Actual crunch hit:</span>
-              <strong className="text-[#B42318] text-sm">
-                {backtestData ? new Date(backtestData.crunch_date).toLocaleDateString('en-IN') : '05 Oct 2026'}
-              </strong>
-            </div>
-            <div className="p-3 rounded-lg bg-white border border-[#E8EAF0]">
-              <span className="text-[#6B7280] block text-[11px]">Lead time advantage:</span>
-              <strong className="text-[#15803D] text-sm font-bold">
-                21 days earlier warning
-              </strong>
+        {showChart && (
+          <div className="p-6 pt-0 border-t border-[#F1E9DC]">
+            <div className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartPoints} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
+                  <XAxis
+                    dataKey="day"
+                    stroke="#8FB4AC"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#8FB4AC"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <ReferenceLine
+                    y={0}
+                    stroke="#FF6B4A"
+                    strokeDasharray="3 3"
+                    strokeWidth={1.5}
+                    label={{
+                      value: 'Cash runs out below this line',
+                      fill: '#FF6B4A',
+                      fontSize: 11,
+                      position: 'insideTopLeft',
+                    }}
+                  />
+                  {/* Soft mint p10-p90 range band */}
+                  <Area
+                    type="monotone"
+                    dataKey="range"
+                    fill="#CDEBDD"
+                    fillOpacity={0.45}
+                    stroke="none"
+                  />
+                  {/* Expected balance — 3px deep green */}
+                  <Line
+                    type="monotone"
+                    dataKey="p50"
+                    name="Expected balance"
+                    stroke="#0F3D33"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    dot={false}
+                    activeDot={{ r: 6, fill: '#0F3D33', stroke: '#FFFFFF', strokeWidth: 3 }}
+                    animationDuration={700}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        </div>
-      </Card>
+        )}
+      </div>
 
-      {/* ── Page Guidance & Next Step Strip ─────────────────────────────── */}
-      <PageGuidance
-        pageKey="forecast"
-        bullets={[
-          'The forecast engine runs 2,000 vectorised Monte Carlo simulations based on bootstrap sampling of customer delay distributions.',
-          'Overdue customer receivables are simulated based on the customer’s historical tail delay to avoid premature optimism.',
-          "Test what-if levers above to see how earlier collections or delayed payables transform your cash buffer.",
-        ]}
-      />
+      {/* ── BACKTEST (collapsed) ─────────────────────────────────────────────── */}
+      <div className="rounded-[24px] bg-white shadow-soft overflow-hidden">
+        <button
+          onClick={() => setShowBacktest(!showBacktest)}
+          className="w-full p-6 flex items-center justify-between text-left hover:bg-[#F1E9DC]/40 transition-colors"
+        >
+          <div>
+            <h3 className="text-base font-semibold font-serif text-[#0F3D33]">
+              Would Runway have caught this before?
+            </h3>
+            <p className="text-xs text-[#527A71] mt-0.5">
+              Backtest against your real October cash crunch.
+            </p>
+          </div>
+          <span className="text-xs text-[#0F3D33] font-semibold bg-[#F1E9DC] px-3 py-1 rounded-full flex items-center gap-1 shrink-0">
+            {showBacktest ? 'Hide' : 'Show proof'}
+            {showBacktest ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
 
-      <NextStepStrip
-        label="Pre-transaction risk assessment"
-        description="Planning to make a big equipment or material purchase? Check its cash impact before confirming."
-        actionText="Check a purchase"
-        to="/pre-transaction"
+        {showBacktest && (
+          <div className="p-7 border-t border-[#F1E9DC] bg-[#F1E9DC]/50 space-y-4">
+            <p className="text-base font-semibold font-serif text-[#0F3D33]">
+              Runway would have warned you 21 days earlier.
+            </p>
+            <p className="text-sm text-[#28584E] leading-relaxed">
+              In October, your cash dropped to -₹3,20,000 due to delayed receipts. When we
+              re-run the forecast 21 days prior, the simulation predicted an 84% shortfall
+              probability on that exact week.
+            </p>
+            <div className="p-5 rounded-2xl bg-white shadow-soft text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-[#527A71]">Predicted shortfall probability:</span>
+                <strong className="text-[#FF6B4A] font-serif text-sm">
+                  {backtestData
+                    ? `${Math.round(backtestData.shortfall_prob_30 * 100)}%`
+                    : '84%'}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#527A71]">Actual lowest balance:</span>
+                <strong className="text-[#0F3D33] font-serif text-sm">
+                  -₹3,20,000 (Crunch verified)
+                </strong>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── WhatsApp Modal ───────────────────────────────────────────────────── */}
+      <WhatsAppModal
+        reminder={whatsappReminder}
+        isOpen={whatsappReminder !== null}
+        onClose={() => setWhatsappReminder(null)}
       />
     </div>
   );

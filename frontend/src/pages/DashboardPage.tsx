@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -8,19 +8,15 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
   ReferenceLine,
 } from 'recharts';
 import {
   Wallet,
   TrendingUp,
   Clock,
-  AlertCircle,
   ArrowRight,
-  ShieldAlert,
-  Sparkles,
-  ChevronRight,
-  Calendar,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
@@ -28,29 +24,26 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ChartTooltip } from '@/components/ui/ChartTooltip';
-import { GettingStartedChecklist } from '@/components/onboarding/GettingStartedChecklist';
-import { PageGuidance } from '@/components/onboarding/PageGuidance';
-import { NextStepStrip } from '@/components/onboarding/NextStepStrip';
-import { RecommendationsList } from '@/components/recommendations/RecommendationsList';
+import { WorkshopIllustration, WorkshopIllustrationVariant } from '@/components/illustrations/WorkshopIllustration';
 import { api, RunwayData, DashboardSummaryData, ForecastData, ActionCardItem } from '@/api/client';
 import { formatINR, formatCompactINR } from '@/utils/format';
-import { Coins } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [showDetails, setShowDetails] = useState(false);
 
   // Queries
-  const { data: runway, isLoading: runwayLoading } = useQuery<RunwayData>({
+  const { data: runway } = useQuery<RunwayData>({
     queryKey: ['runway'],
     queryFn: () => api.getRunway(),
   });
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<DashboardSummaryData>({
+  const { data: summary } = useQuery<DashboardSummaryData>({
     queryKey: ['summary'],
     queryFn: () => api.getSummary(),
   });
 
-  const { data: forecastData, isLoading: forecastLoading } = useQuery<ForecastData>({
+  const { data: forecastData } = useQuery<ForecastData>({
     queryKey: ['forecast', 30],
     queryFn: () => api.getForecast(30),
   });
@@ -69,8 +62,6 @@ export const DashboardPage: React.FC = () => {
       return {
         day: label,
         balance: Math.round(forecastData.p50[idx] || 0),
-        p10: Math.round(forecastData.p10[idx] || 0),
-        p90: Math.round(forecastData.p90[idx] || 0),
       };
     });
   }, [forecastData]);
@@ -83,417 +74,269 @@ export const DashboardPage: React.FC = () => {
       })
     : '5 December';
 
+  const isUrgent = runway?.shortfall_prob_30 && runway.shortfall_prob_30 > 0.5;
+  const illustrationVariant: WorkshopIllustrationVariant = isUrgent ? 'urgent' : 'healthy';
+
+  // Single best recommendation
+  const bestAction = recommendations[0];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-12 max-w-5xl mx-auto">
+      {/* ── Page Header: Fraunces 32px ─────────────────────────────────── */}
       <PageHeader
-        title="Overview"
-        description="Your business cash position and upcoming bills at a glance."
+        title="How is my cash?"
+        description="A calm overview of your workshop's bank balances and upcoming cash flow."
       />
 
-      {/* ── Welcome Banner ──────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-[14px] bg-gradient-to-r from-[#EEF0FD] to-[#F5F3FF] border border-[#E0E4FB] p-5 sm:p-6 shadow-card">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2 max-w-2xl">
+      {/* ── Rule 4: Home Hero — Large colour-blocked panel with custom Workshop illustration ── */}
+      <div className={`p-8 sm:p-10 rounded-[24px] ${isUrgent ? 'bg-[#F1E9DC]' : 'bg-[#CDEBDD]'} shadow-soft relative overflow-hidden transition-all duration-250`}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="space-y-3 max-w-xl">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#3F3DDB]/10 text-[#3F3DDB]">
-                <Sparkles className="w-3.5 h-3.5" />
-                Good morning, Rakesh
+              <Badge variant={isUrgent ? 'danger' : 'safe'}>
+                {isUrgent ? 'Shortage on horizon' : 'Healthy for 14 days'}
+              </Badge>
+              <span className="text-xs text-[#527A71] font-medium">
+                Runway: {runway?.runway_label || '25 days'}
               </span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold font-heading text-[#111827]">
-              You have {formatCompactINR(bankBalance)} in the bank.
-            </h2>
-            <p className="text-sm text-[#4B5563] leading-relaxed">
-              {runway?.shortfall_prob_30 && runway.shortfall_prob_30 > 0.5 ? (
-                <>
-                  A cash shortage is likely around{' '}
-                  <strong className="text-[#B42318] font-semibold">{shortfallDateStr}</strong> due to heavy supplier bills and late customer receipts.
-                </>
+
+            {/* Rule 2: Home headline 40px Fraunces serif */}
+            <h2 className="text-[32px] sm:text-[40px] font-semibold font-serif text-[#0F3D33] tracking-tight leading-[1.15]">
+              {isUrgent ? (
+                <>You're fine for now, but cash gets tight around {shortfallDateStr}.</>
               ) : (
-                'Your cash position is currently stable for the next 14 days.'
+                <>Your cash is steady for the next 14 days.</>
               )}
+            </h2>
+
+            <p className="text-base text-[#28584E] leading-relaxed pt-1">
+              {runway?.one_line_reason ||
+                'A ₹9L payment from Sai Auto Parts is likely to arrive late, while large raw steel bills fall due.'}
             </p>
 
-            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+            <div className="pt-4 flex flex-wrap items-center gap-4">
               <Button
                 variant="primary"
-                size="sm"
+                size="lg"
                 onClick={() => navigate('/forecast')}
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                See what to do
+                Show me what to do
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => navigate('/forecast')}
-              >
-                View 60-day forecast
-              </Button>
-            </div>
-          </div>
-
-          {/* Inline SVG Illustration */}
-          <div className="hidden lg:block shrink-0 pr-4">
-            <svg
-              className="w-36 h-28 text-[#3F3DDB]"
-              viewBox="0 0 160 120"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3F3DDB" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#3F3DDB" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M10 95 C 40 85, 60 70, 85 45 C 110 20, 130 35, 150 15 L 150 110 L 10 110 Z"
-                fill="url(#chartGrad)"
-              />
-              <path
-                d="M10 95 C 40 85, 60 70, 85 45 C 110 20, 130 35, 150 15"
-                stroke="#3F3DDB"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <circle cx="85" cy="45" r="4" fill="#3F3DDB" stroke="#FFFFFF" strokeWidth="2" />
-              <circle cx="150" cy="15" r="4.5" fill="#0EA5A4" stroke="#FFFFFF" strokeWidth="2" />
-              <line x1="5" y1="110" x2="155" y2="110" stroke="#CBD5E1" strokeWidth="1" />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Getting Started Checklist ───────────────────────────────────── */}
-      <GettingStartedChecklist />
-
-      {/* ── HERO RUNWAY CARD ────────────────────────────────────────────── */}
-      <div className="rounded-[14px] bg-white border border-[#E8EAF0] p-6 shadow-card hover:shadow-card-hover transition-all">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wider">
-                Signature Metric
-              </span>
-              <Badge
-                variant={
-                  runway?.status_key === 'high_risk'
-                    ? 'danger'
-                    : runway?.status_key === 'caution'
-                    ? 'caution'
-                    : 'safe'
-                }
-              >
-                {runway?.status || 'Watch'}
-              </Badge>
-            </div>
-
-            <div className="flex items-baseline gap-3">
-              <h1 className="text-3xl sm:text-4xl font-bold font-heading text-[#111827] tracking-tight">
-                Your cash runway:{' '}
-                <span
-                  className={
-                    runway?.status_key === 'high_risk'
-                      ? 'text-[#B42318]'
-                      : runway?.status_key === 'caution'
-                      ? 'text-[#B45309]'
-                      : 'text-[#15803D]'
-                  }
-                >
-                  {runway?.runway_label || '26 days'}
-                </span>
-              </h1>
-            </div>
-
-            <p className="text-sm text-[#4B5563] max-w-2xl leading-relaxed">
-              {runway?.one_line_reason ||
-                'The main risk is a delayed payment from Sai Auto Parts combined with upcoming supplier bills around late November.'}
-            </p>
-
-            <div className="flex items-center gap-4 text-xs text-[#6B7280] pt-1">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#3F3DDB]" />
-                Expected shortfall:{' '}
-                <strong className="text-[#111827]">
-                  {shortfallDateStr}
-                </strong>
-              </span>
-              <span>·</span>
-              <span>
-                Simulated 30-day shortfall risk:{' '}
-                <strong className="text-[#111827]">
-                  {runway?.shortfall_prob_30
-                    ? `${(runway.shortfall_prob_30 * 100).toFixed(0)}%`
-                    : '70%'}
-                </strong>
-              </span>
-            </div>
-          </div>
-
-          <div className="shrink-0 flex flex-col sm:flex-row md:flex-col gap-2">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => navigate('/forecast')}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-            >
-              See how to fix this
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => navigate('/pre-transaction')}
-            >
-              Check a purchase
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 4 SUMMARY STAT CARDS ────────────────────────────────────────── */}
-      <div id="tour-overview-summary" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Cash in bank"
-          value={bankBalance}
-          subtitle={`Across ${summary?.accounts?.length || 3} bank accounts`}
-          icon={Wallet}
-          badgeTheme="brand"
-        />
-        <StatCard
-          title="Money you're expecting (30d)"
-          value={summary?.total_receivables_30d ?? 2510000}
-          subtitle="Customer invoices coming due"
-          icon={TrendingUp}
-          badgeTheme="teal"
-        />
-        <StatCard
-          title="Money you need to pay (30d)"
-          value={summary?.total_payables_30d ?? 1937000}
-          subtitle="Tata Steel and suppliers"
-          icon={Clock}
-          badgeTheme="caution"
-        />
-        <StatCard
-          title="Overdue from customers"
-          value={summary?.overdue_receivables ?? 1350000}
-          subtitle={`${summary?.overdue_receivables_count ?? 2} overdue invoices`}
-          statusVariant="danger"
-          icon={AlertCircle}
-          badgeTheme="danger"
-        />
-      </div>
-
-      {/* ── IMPACT CARD: LATE PAYMENT BORROWING COST ───────────────────── */}
-      <div className="p-4 rounded-[12px] bg-white border border-[#E8EAF0] shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#FFF4DB] text-[#B45309] flex items-center justify-center shrink-0">
-            <Coins className="w-5 h-5 text-[#B45309]" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-[#111827]">
-              Late payments cost you about{' '}
-              <span className="text-[#B42318]">
-                {formatINR(summary?.late_payment_borrowing_cost || 129282)}
-              </span>{' '}
-              in extra borrowing this quarter
-            </h4>
-            <p className="text-xs text-[#6B7280]">
-              Computed from customer average delay days × an assumed 12% annual interest on working capital credit line.
-            </p>
-          </div>
-        </div>
-        <Link
-          to="/reminders"
-          className="text-xs font-semibold text-[#3F3DDB] hover:underline flex items-center gap-1 shrink-0"
-        >
-          Send WhatsApp reminders <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </div>
-
-      {/* ── RECOMMENDED ACTIONS TO PROTECT CASH ────────────────────────── */}
-      <RecommendationsList recommendations={recommendations} maxItems={2} />
-
-      {/* ── MAIN CONTENT: CHART & NEEDS ATTENTION ───────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Simple 30-Day Cash Balance Chart with Soft Area Fill */}
-        <Card className="lg:col-span-3 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8EAF0]">
-              <div>
-                <h3 className="text-base font-bold font-heading text-[#111827]">
-                  Expected cash balance (next 30 days)
-                </h3>
-                <p className="text-xs text-[#6B7280] mt-0.5">
-                  Median projection based on 2,000 simulations and customer payment history
-                </p>
-              </div>
               <Link
                 to="/forecast"
-                className="text-xs font-semibold text-[#3F3DDB] hover:underline flex items-center gap-1"
+                className="text-sm font-semibold text-[#0F3D33] hover:underline"
               >
-                Full view <ChevronRight className="w-3.5 h-3.5" />
+                See full forecast →
               </Link>
             </div>
-
-            <div className="pt-4 h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartPoints}
-                  margin={{ top: 8, right: 12, left: -10, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="indigoArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3F3DDB" stopOpacity={0.12} />
-                      <stop offset="95%" stopColor="#3F3DDB" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F6" />
-                  <XAxis
-                    dataKey="day"
-                    stroke="#9CA3AF"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={{ stroke: '#E8EAF0' }}
-                  />
-                  <YAxis
-                    stroke="#9CA3AF"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <ReferenceLine y={0} stroke="#EF4444" strokeDasharray="4 4" strokeWidth={1.5} />
-                  <Area
-                    type="monotone"
-                    dataKey="balance"
-                    name="Expected cash"
-                    stroke="#3F3DDB"
-                    strokeWidth={2.2}
-                    fill="url(#indigoArea)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#3F3DDB', stroke: '#FFFFFF', strokeWidth: 2 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
           </div>
 
-          <div className="pt-3 border-t border-[#F1F2F6] flex items-center justify-between text-xs text-[#6B7280]">
-            <span>
-              Expected first shortfall:{' '}
-              <strong className="text-[#B42318]">{shortfallDateStr}</strong>
-            </span>
-            <Link to="/forecast" className="text-[#3F3DDB] hover:underline font-medium">
-              Explore "What-if" solutions
-            </Link>
+          {/* Custom inline-SVG workshop illustration */}
+          <div className="shrink-0 flex justify-center md:justify-end">
+            <WorkshopIllustration variant={illustrationVariant} className="w-56 h-44 sm:w-64 sm:h-48" />
           </div>
-        </Card>
-
-        {/* Needs your attention list */}
-        <Card className="lg:col-span-2 flex flex-col justify-between" id="tour-attention-list">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8EAF0]">
-              <h3 className="text-base font-bold font-heading text-[#111827]">
-                Needs your attention
-              </h3>
-              <span className="text-xs text-[#6B7280] font-medium">
-                {summary?.attention_items?.length || 5} items
-              </span>
-            </div>
-
-            <div className="divide-y divide-[#F1F2F6]">
-              {(summary?.attention_items || [
-                {
-                  id: '1',
-                  title: 'Sai Auto Parts payment overdue by 15 days',
-                  amount: 900000,
-                  amount_formatted: '₹9,00,000',
-                  link_text: 'Follow up',
-                  route: '/invoices',
-                  due_label: 'Was due 15 days ago',
-                  urgent: true,
-                  severity: 'high_risk' as const,
-                },
-                {
-                  id: '2',
-                  title: 'Tata Steel raw material payment due',
-                  amount: 750000,
-                  amount_formatted: '₹7,50,000',
-                  link_text: 'Check cash impact',
-                  route: '/pre-transaction',
-                  due_label: 'Due in 25 days',
-                  urgent: false,
-                  severity: 'caution' as const,
-                },
-                {
-                  id: '3',
-                  title: 'Staff salaries and factory payroll',
-                  amount: 520000,
-                  amount_formatted: '₹5,20,000',
-                  link_text: 'View schedule',
-                  route: '/reminders',
-                  due_label: 'Due on 1st of month',
-                  urgent: false,
-                  severity: 'safe' as const,
-                },
-              ]).map((item) => (
-                <div
-                  key={item.id}
-                  className="py-3 first:pt-2.5 last:pb-0 flex items-start justify-between gap-3 text-sm"
-                >
-                  <div className="space-y-0.5 min-w-0">
-                    <p className="font-semibold text-[#111827] text-xs leading-snug line-clamp-1">
-                      {item.title}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-                      <span className="font-medium text-[#111827] tabular-nums">
-                        {item.amount_formatted}
-                      </span>
-                      <span>·</span>
-                      <span className={item.urgent ? 'text-[#B42318] font-medium' : ''}>
-                        {item.due_label}
-                      </span>
-                    </div>
-                  </div>
-
-                  <Link
-                    to={item.route}
-                    className="text-xs font-semibold text-[#3F3DDB] hover:underline shrink-0 pt-0.5"
-                  >
-                    {item.link_text}
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-[#F1F2F6] text-right">
-            <Link to="/risk-alerts" className="text-xs font-semibold text-[#3F3DDB] hover:underline">
-              See all alerts and suggestions
-            </Link>
-          </div>
-        </Card>
+        </div>
       </div>
 
-      {/* ── Page Guidance Box ───────────────────────────────────────────── */}
-      <PageGuidance
-        pageKey="dashboard"
-        bullets={[
-          'Cash runway tells you exactly how many days of operations your bank accounts can sustain before going into overdraft.',
-          'Summary cards track real-time bank accounts, upcoming 30-day receipts, and supplier payables.',
-          'The 30-day forecast takes into account historical customer delay distributions to simulate probable shortfall dates.',
-        ]}
-      />
+      {/* ── Rule 5: Chart Rebuilt — 3px rounded line in deep green, mint area, coral danger zone ── */}
+      <Card bg="white" className="p-8 sm:p-9 shadow-soft">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4">
+          <div>
+            <h3 className="text-xl font-semibold font-serif text-[#0F3D33] tracking-tight">
+              Cash balance over the next 30 days
+            </h3>
+            <p className="text-xs text-[#527A71] mt-0.5">
+              Median simulated trajectory based on real customer delays
+            </p>
+          </div>
+          {/* Hand-drawn style coral callout */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FDEEE9] text-[#FF6B4A] text-xs font-semibold">
+            <span>↘ Cash gets tight here ({shortfallDateStr})</span>
+          </div>
+        </div>
 
-      {/* ── Next Step Strip ────────────────────────────────────────────── */}
-      <NextStepStrip
-        label="Planning your next 30 to 60 days?"
-        description="Review your 60-day cash forecast and test 'What if' scenarios to solve the upcoming deficit."
-        actionText="View forecast"
-        to="/forecast"
-      />
+        <div className="pt-4 h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartPoints} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="warmMintArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#CDEBDD" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#CDEBDD" stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <XAxis
+                dataKey="day"
+                stroke="#8FB4AC"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#8FB4AC"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              {/* Only faint baseline */}
+              <ReferenceLine y={0} stroke="#FF6B4A" strokeDasharray="3 3" strokeWidth={1.5} />
+              <Area
+                type="monotone"
+                dataKey="balance"
+                name="Expected cash"
+                stroke="#0F3D33"
+                strokeWidth={3}
+                strokeLinecap="round"
+                fill="url(#warmMintArea)"
+                dot={false}
+                activeDot={{ r: 6, fill: '#0F3D33', stroke: '#FFFFFF', strokeWidth: 3 }}
+                animationDuration={700}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+
+      {/* ── Rule 6: Single best recommendation card ────────────────────────── */}
+      {bestAction && (
+        <div className="p-6 sm:p-7 rounded-[24px] bg-[#F1E9DC] shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#527A71] uppercase tracking-wider">
+                Your best next step
+              </span>
+              <Badge variant="brand">{bestAction.effort} effort</Badge>
+            </div>
+            <h4 className="text-lg font-semibold font-serif text-[#0F3D33]">
+              {bestAction.title}
+            </h4>
+            <p className="text-xs text-[#28584E]">
+              {bestAction.why} ({bestAction.impact})
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/forecast')}
+            >
+              Take action
+            </Button>
+            <Link to="/forecast" className="text-xs font-semibold text-[#0F3D33] hover:underline">
+              See more ideas →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Below the fold: Progressive Disclosure ────────────────────────── */}
+      <div className="pt-2">
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="w-full py-4 px-6 rounded-[24px] bg-white shadow-soft flex items-center justify-between text-sm font-semibold text-[#0F3D33] hover:bg-[#F1E9DC]/60 transition-all"
+        >
+          <span className="font-serif text-base">More details (3 numbers & urgent bills)</span>
+          <span className="flex items-center gap-1.5 text-xs text-[#0F3D33] font-semibold bg-[#F1E9DC] px-3 py-1 rounded-full">
+            {showDetails ? 'Hide details' : 'Show details'}
+            {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
+
+        {showDetails && (
+          <div className="mt-6 space-y-6 animate-fadeIn">
+            {/* Exactly 3 summary numbers with alternate colour blocking */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <StatCard
+                title="Cash in bank"
+                value={bankBalance}
+                subtitle="Across 3 operational accounts"
+                icon={Wallet}
+                bg="sand"
+              />
+              <StatCard
+                title="Money coming in (30d)"
+                value={summary?.total_receivables_30d ?? 2510000}
+                subtitle="Customer invoices coming due"
+                icon={TrendingUp}
+                bg="mint"
+              />
+              <StatCard
+                title="Money going out (30d)"
+                value={summary?.total_payables_30d ?? 1937000}
+                subtitle="Raw materials & payroll"
+                icon={Clock}
+                bg="white"
+              />
+            </div>
+
+            {/* Needs your attention: strictly limited to top 3 items */}
+            <Card bg="white" className="p-7 shadow-soft">
+              <div className="flex items-center justify-between pb-4 border-b border-[#F1E9DC]">
+                <h3 className="text-lg font-semibold font-serif text-[#0F3D33]">
+                  Needs your attention
+                </h3>
+                <Link to="/money?tab=invoices" className="text-xs font-semibold text-[#0F3D33] hover:underline">
+                  View all bills →
+                </Link>
+              </div>
+
+              <div className="divide-y divide-[#F1E9DC]">
+                {(summary?.attention_items?.slice(0, 3) || [
+                  {
+                    id: '1',
+                    title: 'Sai Auto Parts payment overdue by 15 days',
+                    amount_formatted: '₹9,00,000',
+                    link_text: 'Follow up',
+                    route: '/reminders',
+                    due_label: 'Overdue',
+                    urgent: true,
+                  },
+                  {
+                    id: '2',
+                    title: 'Tata Steel raw material payment due',
+                    amount_formatted: '₹7,50,000',
+                    link_text: 'Check impact',
+                    route: '/pre-transaction',
+                    due_label: 'Due in 25 days',
+                    urgent: false,
+                  },
+                  {
+                    id: '3',
+                    title: 'Staff salaries and factory payroll',
+                    amount_formatted: '₹5,20,000',
+                    link_text: 'View schedule',
+                    route: '/reminders',
+                    due_label: 'Due on 1st',
+                    urgent: false,
+                  },
+                ]).map((item) => (
+                  <div key={item.id} className="py-4 flex items-center justify-between gap-4 text-sm">
+                    <div>
+                      <p className="font-semibold text-[#0F3D33] text-sm">{item.title}</p>
+                      <p className="text-xs text-[#527A71] mt-0.5">
+                        <strong className="text-[#0F3D33] font-serif tabular-nums">{item.amount_formatted}</strong> ·{' '}
+                        <span className={item.urgent ? 'text-[#FF6B4A] font-semibold' : ''}>
+                          {item.due_label}
+                        </span>
+                      </p>
+                    </div>
+                    <Link
+                      to={item.route}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[#F1E9DC] text-[#0F3D33] hover:bg-[#E5DDD0] transition-colors shrink-0"
+                    >
+                      {item.link_text}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

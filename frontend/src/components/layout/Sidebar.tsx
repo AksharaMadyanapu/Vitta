@@ -1,82 +1,66 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Settings } from 'lucide-react';
-import { navigationGroups } from '@/config/navigation';
+import { navigationItems } from '@/config/navigation';
 import { cn } from '@/utils/cn';
 
 export const Sidebar: React.FC = () => {
   return (
-    <aside className="fixed top-0 left-0 bottom-0 z-30 w-[232px] bg-[#1E1B4B] text-white flex flex-col justify-between select-none shadow-lg">
+    // Rule 7: Deep green #0F3D33 background, cream text, active item as cream #FBF7F0 pill, collapse on narrow screens
+    <aside className="fixed top-0 left-0 bottom-0 z-30 w-16 md:w-[232px] bg-[#0F3D33] text-[#FBF7F0] flex flex-col justify-between select-none shadow-soft transition-all duration-250">
       <div>
-        {/* Brand Header with Runway inline SVG logo mark */}
-        <div className="h-16 flex items-center px-5 border-b border-[#312E81]">
+        {/* Brand Header */}
+        <div className="h-20 flex items-center justify-center md:justify-start px-4 md:px-6">
           <div className="flex items-center gap-3">
-            {/* Inline SVG Logo Mark: rounded square with stylized upward chart line */}
-            <div className="w-8 h-8 rounded-xl bg-[#3F3DDB] flex items-center justify-center text-white shadow-sm shrink-0">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 17l6-6 4 4 6-8" />
-                <path d="M14 7h6v6" />
+            {/* Runway logo mark: rounded square with upward curve */}
+            <div className="w-9 h-9 rounded-2xl bg-[#CDEBDD] text-[#0F3D33] flex items-center justify-center shadow-soft shrink-0">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 18c4-1 8-5 11-10" />
+                <path d="M9 7h6v6" />
               </svg>
             </div>
-            <div>
-              <span className="text-base font-bold font-heading tracking-tight text-white block leading-none">
+            <div className="hidden md:block">
+              <span className="text-xl font-semibold font-serif tracking-tight text-[#FBF7F0] block leading-none">
                 Runway
               </span>
-              <span className="text-[10px] text-[#A5B4FC] tracking-normal font-medium">
-                Cash intelligence
+              <span className="text-[10px] text-[#8FB4AC] tracking-normal font-medium mt-0.5 block">
+                Cash mentor
               </span>
             </div>
           </div>
         </div>
 
-        {/* Navigation Groups */}
-        <nav className="p-3 space-y-4 overflow-y-auto max-h-[calc(100vh-140px)]">
-          {navigationGroups.map((group) => (
-            <div key={group.heading} className="space-y-1">
-              <div className="px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-[#A5B4FC]">
-                {group.heading}
-              </div>
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.id}
-                    to={item.path}
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors duration-180",
-                        isActive
-                          ? "bg-[#312E81] text-white font-medium shadow-sm"
-                          : "text-[#C7D2FE]/80 hover:text-white hover:bg-[#292569]"
-                      )
-                    }
-                  >
-                    <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.8} />
-                    <span className="truncate">{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          ))}
+        {/* 5 Main Navigation Items */}
+        <nav className="p-2 md:p-3 space-y-2 mt-2">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.id}
+                to={item.path}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 px-3 py-3 rounded-full text-sm transition-all duration-250 justify-center md:justify-start",
+                    isActive
+                      ? "bg-[#FBF7F0] text-[#0F3D33] font-semibold shadow-soft"
+                      : "text-[#FBF7F0]/80 hover:text-[#FBF7F0] hover:bg-[#194E42]"
+                  )
+                }
+                title={item.label}
+              >
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
+                  <Icon className="w-5 h-5" strokeWidth={2} />
+                </div>
+                <span className="hidden md:inline truncate">{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
       </div>
 
-      {/* Settings at the bottom */}
-      <div className="p-3 border-t border-[#312E81]">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors duration-180",
-              isActive
-                ? "bg-[#312E81] text-white font-medium shadow-sm"
-                : "text-[#C7D2FE]/80 hover:text-white hover:bg-[#292569]"
-            )
-          }
-        >
-          <Settings className="w-[18px] h-[18px] shrink-0" strokeWidth={1.8} />
-          <span>Settings</span>
-        </NavLink>
+      {/* Footer details */}
+      <div className="hidden md:block p-5 m-3 rounded-2xl bg-[#194E42]/60 text-xs text-[#8FB4AC]">
+        <p className="font-semibold font-serif text-[#FBF7F0]">Deccan Precision</p>
+        <p className="text-[11px] mt-0.5 text-[#8FB4AC]">Auto-parts · Hyderabad</p>
       </div>
     </aside>
   );

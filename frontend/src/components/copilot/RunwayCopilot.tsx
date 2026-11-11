@@ -2,17 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare,
-  Sparkles,
   X,
   Send,
-  CornerDownLeft,
-  ChevronDown,
-  ShieldCheck,
   Bot,
-  User,
 } from 'lucide-react';
 import { api, SourceChip, ChatResponse } from '@/api/client';
-import { Button } from '@/components/ui/Button';
 
 interface Message {
   id: string;
@@ -25,7 +19,6 @@ interface Message {
 const SUGGESTED_QUESTIONS = [
   'Why am I short on 5 Dec?',
   'Who is paying me late?',
-  'What should I do this week?',
   'Can I afford a ₹5L purchase?',
 ];
 
@@ -37,10 +30,9 @@ export const RunwayCopilot: React.FC = () => {
     {
       id: 'welcome-1',
       sender: 'copilot',
-      text: 'Hello Rakesh. I am Runway Copilot. I analyze your live bank balances, simulation trajectories, and counterparties. Ask me anything about your cash flow or test decisions.',
+      text: 'Hello Rakesh. I am your Runway cash mentor. Ask me anything about your workshop bills or test financial choices.',
       sources: [
         { label: 'Deccan Precision', value: 'Live Engine' },
-        { label: 'Grounding', value: '100% Real Facts' },
       ],
       timestamp: 'Just now',
     },
@@ -83,12 +75,12 @@ export const RunwayCopilot: React.FC = () => {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, botMsg]);
-    } catch (err) {
+    } catch {
       const errMsg: Message = {
         id: `err-${Date.now()}`,
         sender: 'copilot',
-        text: 'Sorry, I encountered an issue contacting the intelligence engine. Please try again.',
-        timestamp: 'Just now',
+        text: 'Sorry, I could not reach the forecast intelligence service.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errMsg]);
     } finally {
@@ -97,7 +89,7 @@ export const RunwayCopilot: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -105,128 +97,114 @@ export const RunwayCopilot: React.FC = () => {
 
   return (
     <>
-      {/* Floating Action Trigger Button */}
-      {!isOpen && (
-        <motion.button
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#1E1B4B] text-white shadow-xl border border-[#3F3DDB]/30 hover:bg-[#2E2A72] transition-colors group"
-        >
-          <div className="w-6 h-6 rounded-full bg-[#3F3DDB] flex items-center justify-center text-white">
-            <Sparkles className="w-3.5 h-3.5" />
+      {/* Round Coral "Ask" button in bottom-right */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed bottom-6 right-6 z-40 w-13 h-13 rounded-full bg-[#FF6B4A] text-white shadow-soft-hover hover:bg-[#E85535] flex items-center justify-center transition-all duration-250 hover:scale-105 active:scale-95"
+        title="Ask Runway"
+      >
+        {isOpen ? (
+          <X className="w-5 h-5" />
+        ) : (
+          <div className="flex flex-col items-center">
+            <MessageSquare className="w-5 h-5" />
+            <span className="text-[10px] font-bold tracking-tight">Ask</span>
           </div>
-          <span className="text-sm font-semibold tracking-wide">Ask Runway</span>
-          <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-        </motion.button>
-      )}
+        )}
+      </button>
 
-      {/* Floating Copilot Modal/Drawer Panel */}
+      {/* Floating Chat Drawer */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.97 }}
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-5 right-5 z-50 w-[92vw] sm:w-[420px] h-[580px] max-h-[85vh] rounded-[16px] bg-white border border-[#E8EAF0] shadow-2xl flex flex-col overflow-hidden"
+            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-22 right-6 z-40 w-[380px] max-w-[calc(100vw-48px)] h-[540px] bg-white rounded-[24px] shadow-soft-hover flex flex-col overflow-hidden"
           >
-            {/* Header */}
-            <div className="px-4 py-3.5 bg-[#1E1B4B] text-white flex items-center justify-between shrink-0">
+            {/* Header: Deep green with cream text */}
+            <div className="p-4 bg-[#0F3D33] text-[#FBF7F0] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#3F3DDB] flex items-center justify-center text-white shadow-sm">
-                  <Sparkles className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-[#CDEBDD] text-[#0F3D33] flex items-center justify-center">
+                  <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold font-heading">Runway Copilot</h3>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#22C55E]/20 text-[#4ADE80]">
-                      Grounded
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#A5B4FC]">
-                    Grounded in real simulation numbers
-                  </p>
+                  <h4 className="text-sm font-semibold font-serif text-[#FBF7F0]">Ask Runway</h4>
+                  <p className="text-[10px] text-[#8FB4AC]">Grounded in live simulation data</p>
                 </div>
               </div>
-
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-[#A5B4FC] hover:text-white hover:bg-white/10 transition-colors"
+                className="w-7 h-7 rounded-full bg-[#194E42] text-[#FBF7F0] flex items-center justify-center hover:bg-[#28584E]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Messages Feed */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-[#F8FAFC]">
-              {messages.map((msg) => (
+            {/* Message Thread */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#FBF7F0]">
+              {messages.map((m) => (
                 <div
-                  key={msg.id}
-                  className={`flex flex-col ${
-                    msg.sender === 'user' ? 'items-end' : 'items-start'
-                  }`}
+                  key={m.id}
+                  className={`flex gap-2.5 ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
+                  {m.sender === 'copilot' && (
+                    <div className="w-6 h-6 rounded-full bg-[#CDEBDD] text-[#0F3D33] flex items-center justify-center text-[10px] shrink-0 mt-0.5 font-bold font-serif">
+                      R
+                    </div>
+                  )}
+
                   <div
-                    className={`max-w-[85%] rounded-[14px] p-3 text-xs leading-relaxed ${
-                      msg.sender === 'user'
-                        ? 'bg-[#3F3DDB] text-white rounded-br-none'
-                        : 'bg-white border border-[#E8EAF0] text-[#111827] shadow-sm rounded-bl-none'
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
+                      m.sender === 'user'
+                        ? 'bg-[#FF6B4A] text-white rounded-br-none shadow-soft'
+                        : 'bg-white text-[#0F3D33] rounded-bl-none shadow-soft'
                     }`}
                   >
-                    <p>{msg.text}</p>
+                    <p className="whitespace-pre-wrap">{m.text}</p>
 
-                    {/* Source Chips under Copilot replies */}
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-2.5 pt-2 border-t border-[#F1F2F6] flex flex-wrap gap-1.5">
-                        <span className="text-[10px] text-[#9CA3AF] uppercase font-bold tracking-wider mr-1 self-center">
-                          Sources:
-                        </span>
-                        {msg.sources.map((chip, idx) => (
+                    {m.sources && m.sources.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-[#F1E9DC] flex flex-wrap gap-1">
+                        {m.sources.map((chip, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#EEF0FD] text-[#3F3DDB] border border-[#C7D2FE]"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F1E9DC] text-[#0F3D33]"
                           >
-                            <span className="text-[#6B7280]">{chip.label}:</span>
-                            <strong className="font-semibold">{chip.value}</strong>
+                            <span className="text-[#527A71]">{chip.label}:</span>
+                            <span className="font-semibold">{chip.value}</span>
                           </span>
                         ))}
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] text-[#9CA3AF] mt-1 px-1">
-                    {msg.timestamp}
-                  </span>
                 </div>
               ))}
-
               {isLoading && (
-                <div className="flex items-start gap-2">
-                  <div className="bg-white border border-[#E8EAF0] p-3 rounded-[14px] text-xs text-[#6B7280] flex items-center gap-2 shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-[#3F3DDB] animate-bounce" />
-                    <span className="w-2 h-2 rounded-full bg-[#3F3DDB] animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-2 h-2 rounded-full bg-[#3F3DDB] animate-bounce [animation-delay:0.4s]" />
-                    <span>Analyzing cash-flow trajectories...</span>
+                <div className="flex gap-2 text-xs text-[#527A71]">
+                  <div className="w-6 h-6 rounded-full bg-[#CDEBDD] text-[#0F3D33] flex items-center justify-center text-[10px] font-bold">
+                    R
+                  </div>
+                  <div className="bg-white rounded-2xl px-4 py-2.5 shadow-soft">
+                    <span>Analyzing cash flow...</span>
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Suggested Question Chips */}
-            <div className="p-2.5 bg-white border-t border-[#E8EAF0] shrink-0">
-              <span className="text-[10px] font-semibold text-[#9CA3AF] uppercase tracking-wider block mb-1.5 px-1">
+            {/* Exactly 3 Suggested Questions */}
+            <div className="p-3 bg-white border-t border-[#F1E9DC] shrink-0">
+              <span className="text-[10px] font-semibold text-[#527A71] uppercase tracking-wider block mb-1.5 px-1">
                 Suggested questions:
               </span>
-              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              <div className="flex flex-col gap-1.5">
                 {SUGGESTED_QUESTIONS.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSend(q)}
                     disabled={isLoading}
-                    className="whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#F5F6FA] text-[#374151] border border-[#E8EAF0] hover:bg-[#EEF0FD] hover:text-[#3F3DDB] hover:border-[#C7D2FE] transition-colors shrink-0 disabled:opacity-50"
+                    className="text-left px-3 py-2 rounded-xl text-xs font-medium bg-[#F1E9DC]/60 text-[#0F3D33] hover:bg-[#CDEBDD] transition-colors truncate"
                   >
                     {q}
                   </button>
@@ -235,22 +213,22 @@ export const RunwayCopilot: React.FC = () => {
             </div>
 
             {/* Input Bar */}
-            <div className="p-3 bg-white border-t border-[#E8EAF0] flex items-center gap-2 shrink-0">
+            <div className="p-3 bg-white border-t border-[#F1E9DC] flex items-center gap-2 shrink-0">
               <input
                 type="text"
-                placeholder="Ask about cash runway, bills, or purchases..."
+                placeholder="Ask about cash, bills, or runway..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={isLoading}
-                className="flex-1 px-3 py-2 bg-[#F9FAFB] border border-[#E8EAF0] rounded-lg text-xs text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:bg-white focus:border-[#3F3DDB] transition-all"
+                className="flex-1 px-4 py-2.5 bg-[#FBF7F0] rounded-full text-xs text-[#0F3D33] focus:outline-none focus:ring-2 focus:ring-[#0F3D33]/20"
               />
               <button
                 onClick={() => handleSend()}
                 disabled={!inputText.trim() || isLoading}
-                className="p-2 rounded-lg bg-[#3F3DDB] text-white hover:bg-[#3230C8] disabled:opacity-40 transition-colors shrink-0 shadow-sm"
+                className="p-2.5 rounded-full bg-[#FF6B4A] text-white hover:bg-[#E85535] disabled:opacity-40 transition-colors shrink-0 shadow-soft"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-3.5 h-3.5" />
               </button>
             </div>
           </motion.div>
@@ -259,4 +237,3 @@ export const RunwayCopilot: React.FC = () => {
     </>
   );
 };
-

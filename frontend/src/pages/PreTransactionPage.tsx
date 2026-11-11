@@ -1,37 +1,25 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer,
   ComposedChart,
-  Area,
   Line,
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
   ReferenceLine,
-  ReferenceArea,
 } from 'recharts';
 import {
-  Sparkles,
   ArrowRight,
-  ShieldAlert,
-  ShieldCheck,
-  CheckCircle2,
-  Calendar,
-  AlertTriangle,
-  RotateCcw,
-  Check,
-  Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ChartTooltip } from '@/components/ui/ChartTooltip';
-import { PageGuidance } from '@/components/onboarding/PageGuidance';
 import { api, AssessResponse, AlternativeOption } from '@/api/client';
-import { formatINR, formatCompactINR } from '@/utils/format';
+import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
 
 const PREFILLED_EXAMPLES = [
@@ -61,7 +49,6 @@ const PREFILLED_EXAMPLES = [
 export const PreTransactionPage: React.FC = () => {
   const { success, error } = useToast();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [txnType, setTxnType] = useState<'purchase' | 'sale' | 'expense'>('purchase');
   const [party, setParty] = useState('Sandvik Coromant India');
   const [amount, setAmount] = useState<number>(450000);
@@ -75,6 +62,7 @@ export const PreTransactionPage: React.FC = () => {
   const [isAssessing, setIsAssessing] = useState(false);
   const [assessment, setAssessment] = useState<AssessResponse | null>(null);
   const [selectedAlt, setSelectedAlt] = useState<AlternativeOption | null>(null);
+  const [showOtherAlts, setShowOtherAlts] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -92,7 +80,6 @@ export const PreTransactionPage: React.FC = () => {
       });
       setAssessment(res);
       setSelectedAlt(null);
-      setStep(2);
       success('Simulation complete', 'Re-ran 2,000 cash paths with this transaction.');
     } catch (err) {
       error('Assessment failed', 'Could not run simulation engine.');
@@ -101,7 +88,7 @@ export const PreTransactionPage: React.FC = () => {
     }
   };
 
-  const handleApplyExample = (ex: (typeof PREFILLED_EXAMPLES)[0]) => {
+  const handleSelectExample = (ex: (typeof PREFILLED_EXAMPLES)[0]) => {
     setTxnType(ex.type);
     setParty(ex.party);
     setAmount(ex.amount);
@@ -109,38 +96,23 @@ export const PreTransactionPage: React.FC = () => {
     setAssessment(null);
     setSelectedAlt(null);
     setConfirmed(false);
-    setStep(1);
   };
 
-  const handleSelectAlternative = (alt: AlternativeOption) => {
-    if (selectedAlt?.id === alt.id) {
-      setSelectedAlt(null);
-    } else {
-      setSelectedAlt(alt);
-      setStep(3);
-    }
-  };
-
-  const handleConfirmDecision = async () => {
+  // Confirm choice into engine
+  const handleConfirm = async () => {
     if (!assessment) return;
     setIsConfirming(true);
     try {
-      const effectiveAmount = amount;
       await api.confirmPurchase({
         type: txnType,
         party,
-        amount: effectiveAmount,
+        amount,
         date: targetDate,
-        alternative_id: selectedAlt ? selectedAlt.id : 'original_plan',
-        notes: selectedAlt
-          ? `Confirmed with choice: ${selectedAlt.title}`
-          : 'Confirmed original transaction plan',
+        alternative_id: selectedAlt?.id,
+        notes: selectedAlt ? `Applied alternative: ${selectedAlt.title}` : undefined,
       });
       setConfirmed(true);
-      success(
-        'Transaction confirmed!',
-        'Saved to schedule. Cash runway & forecast updated across the entire platform.'
-      );
+      success('Transaction recorded', 'Your cash runway and forecast have been updated everywhere.');
     } catch (err) {
       error('Confirmation failed', 'Could not record transaction.');
     } finally {
@@ -148,453 +120,279 @@ export const PreTransactionPage: React.FC = () => {
     }
   };
 
-  // Build chart points
+  // Chart data
   const chartPoints = React.useMemo(() => {
     if (!assessment) return [];
-    return assessment.days.map((dayStr, idx) => {
+    const days = assessment.days || [];
+    const base = assessment.before_curve || [];
+    const withTxn = assessment.after_curve || [];
+
+    return days.map((dayStr: string, idx: number) => {
       const d = new Date(dayStr);
       const label = idx === 0 ? 'Today' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-      const beforeVal = assessment.before_curve[idx];
-      let afterVal = assessment.after_curve[idx];
-
       return {
         day: label,
-        before: beforeVal,
-        after: afterVal,
+        before: Math.round(base[idx] || 0),
+        after: Math.round(withTxn[idx] || 0),
       };
     });
   }, [assessment]);
 
+  const bestAlternative = assessment?.alternatives?.[0];
+  const otherAlternatives = assessment?.alternatives?.slice(1) || [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-12 max-w-3xl mx-auto">
+      {/* ── Page Header: Fraunces 32px ─────────────────────────────────── */}
       <PageHeader
-        title="Check a purchase"
-        description="Test planned equipment or material purchases before confirming to protect your cash runway."
+        title="Can I afford this purchase?"
+        description="Test any big expense or machine purchase against 2,000 cash paths before you sign."
       />
 
-      {/* ── 3-STEP FLOW HEADER ────────────────────────────────────────── */}
-      <div className="p-4 rounded-[14px] bg-white border border-[#E8EAF0] shadow-card">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div
-            className={`p-3 rounded-[10px] flex items-center gap-3 transition-colors ${
-              step === 1 ? 'bg-[#EEF0FD] border border-[#C7D2FE]' : 'bg-[#F9FAFB]'
-            }`}
-          >
-            <span
-              className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
-                step === 1
-                  ? 'bg-[#3F3DDB] text-white'
-                  : 'bg-[#E5E7EB] text-[#6B7280]'
-              }`}
-            >
-              1
-            </span>
-            <div>
-              <h4 className="text-xs font-bold text-[#111827]">1. Describe it</h4>
-              <p className="text-[11px] text-[#6B7280]">Enter amount, party & date</p>
-            </div>
-          </div>
-
-          <div
-            className={`p-3 rounded-[10px] flex items-center gap-3 transition-colors ${
-              step === 2 ? 'bg-[#EEF0FD] border border-[#C7D2FE]' : 'bg-[#F9FAFB]'
-            }`}
-          >
-            <span
-              className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
-                step === 2
-                  ? 'bg-[#3F3DDB] text-white'
-                  : 'bg-[#E5E7EB] text-[#6B7280]'
-              }`}
-            >
-              2
-            </span>
-            <div>
-              <h4 className="text-xs font-bold text-[#111827]">2. See the impact</h4>
-              <p className="text-[11px] text-[#6B7280]">View re-simulated balance</p>
-            </div>
-          </div>
-
-          <div
-            className={`p-3 rounded-[10px] flex items-center gap-3 transition-colors ${
-              step === 3 || confirmed
-                ? 'bg-[#EEF0FD] border border-[#C7D2FE]'
-                : 'bg-[#F9FAFB]'
-            }`}
-          >
-            <span
-              className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center shrink-0 ${
-                step === 3 || confirmed
-                  ? 'bg-[#3F3DDB] text-white'
-                  : 'bg-[#E5E7EB] text-[#6B7280]'
-              }`}
-            >
-              3
-            </span>
-            <div>
-              <h4 className="text-xs font-bold text-[#111827]">3. Decide & confirm</h4>
-              <p className="text-[11px] text-[#6B7280]">Choose plan & lock forecast</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── PREFILLED EXAMPLE CHIPS ────────────────────────────────────── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-        <span className="text-xs font-semibold text-[#6B7280] whitespace-nowrap">
-          Try a prefilled scenario:
-        </span>
+      {/* ── Example Chips ──────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs font-semibold text-[#527A71]">Try an example:</span>
         {PREFILLED_EXAMPLES.map((ex, idx) => (
           <button
             key={idx}
-            onClick={() => handleApplyExample(ex)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-[#E8EAF0] text-[#374151] hover:border-[#3F3DDB] hover:text-[#3F3DDB] transition-all shadow-sm shrink-0 flex items-center gap-1.5"
+            type="button"
+            onClick={() => handleSelectExample(ex)}
+            className="px-4 py-2 rounded-full text-xs font-semibold bg-white text-[#0F3D33] hover:bg-[#F1E9DC] shadow-soft transition-all duration-250"
           >
-            <Sparkles className="w-3 h-3 text-[#3F3DDB]" />
             {ex.label}
           </button>
         ))}
       </div>
 
-      {/* ── MAIN CONTENT GRID: INPUT FORM & ASSESSMENT RESULT ──────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Form Card */}
-        <Card className="lg:col-span-5 space-y-4">
-          <div className="pb-3 border-b border-[#E8EAF0]">
-            <h3 className="text-base font-bold font-heading text-[#111827]">
-              Transaction details
-            </h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              We test this against all 2,000 cash trajectories and upcoming bills.
-            </p>
-          </div>
-
-          <form onSubmit={handleAssess} className="space-y-3.5">
+      {/* ── Single Centred Card with 3 Fields (What, How much, When) ───── */}
+      <Card bg="white" className="p-8 sm:p-9 shadow-soft">
+        <form onSubmit={handleAssess} className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {/* Field 1: What */}
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Transaction type
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['purchase', 'expense', 'sale'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTxnType(t)}
-                    className={`py-1.5 rounded-lg text-xs font-semibold capitalize border transition-all ${
-                      txnType === t
-                        ? 'bg-[#3F3DDB] text-white border-[#3F3DDB] shadow-sm'
-                        : 'bg-[#F9FAFB] text-[#4B5563] border-[#E8EAF0] hover:bg-white'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Amount (₹)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6B7280]">
-                  ₹
-                </span>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  required
-                  className="w-full pl-7 pr-3 py-2 bg-white border border-[#CBD5E1] rounded-lg text-xs text-[#111827] font-semibold focus:outline-none focus:border-[#3F3DDB]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
-                Party / Payee
+              <label className="block text-xs font-semibold text-[#527A71] uppercase tracking-wider mb-2">
+                What / Supplier
               </label>
               <input
                 type="text"
                 value={party}
                 onChange={(e) => setParty(e.target.value)}
+                placeholder="e.g. Tata Steel BSL Ltd"
+                className="w-full px-4 py-3 bg-[#FBF7F0] rounded-2xl text-sm font-medium text-[#0F3D33] focus:outline-none focus:ring-2 focus:ring-[#0F3D33]/20 shadow-soft"
                 required
-                className="w-full px-3 py-2 bg-white border border-[#CBD5E1] rounded-lg text-xs text-[#111827] focus:outline-none focus:border-[#3F3DDB]"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#374151] mb-1">
-                  Delivery / Order date
-                </label>
-                <input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-white border border-[#CBD5E1] rounded-lg text-xs text-[#111827] focus:outline-none focus:border-[#3F3DDB]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#374151] mb-1">
-                  Payment credit terms
-                </label>
-                <select
-                  value={terms}
-                  onChange={(e) => setTerms(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-white border border-[#CBD5E1] rounded-lg text-xs text-[#111827] focus:outline-none focus:border-[#3F3DDB]"
-                >
-                  <option value={0}>Immediate (0 days)</option>
-                  <option value={15}>Net 15 days</option>
-                  <option value={30}>Net 30 days</option>
-                  <option value={45}>Net 45 days</option>
-                </select>
-              </div>
+            {/* Field 2: How much */}
+            <div>
+              <label className="block text-xs font-semibold text-[#527A71] uppercase tracking-wider mb-2">
+                How much (₹)
+              </label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                step={10000}
+                className="w-full px-4 py-3 bg-[#FBF7F0] rounded-2xl text-base font-semibold font-serif text-[#0F3D33] tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0F3D33]/20 shadow-soft"
+                required
+              />
             </div>
 
-            <div className="pt-2">
-              <Button
-                type="submit"
-                variant="primary"
-                className="w-full justify-center"
-                isLoading={isAssessing}
-                rightIcon={<ArrowRight className="w-4 h-4" />}
-              >
-                Simulate cash impact
-              </Button>
+            {/* Field 3: When */}
+            <div>
+              <label className="block text-xs font-semibold text-[#527A71] uppercase tracking-wider mb-2">
+                When (Payment date)
+              </label>
+              <input
+                type="date"
+                value={targetDate}
+                onChange={(e) => setTargetDate(e.target.value)}
+                className="w-full px-4 py-3 bg-[#FBF7F0] rounded-2xl text-sm font-medium text-[#0F3D33] focus:outline-none focus:ring-2 focus:ring-[#0F3D33]/20 shadow-soft"
+                required
+              />
             </div>
-          </form>
-        </Card>
-
-        {/* Results Card */}
-        <Card className="lg:col-span-7 flex flex-col justify-between space-y-4">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-[#E8EAF0]">
-              <h3 className="text-base font-bold font-heading text-[#111827]">
-                Simulation verdict
-              </h3>
-              {assessment && (
-                <Badge
-                  variant={
-                    (selectedAlt ? selectedAlt.verdict : assessment.verdict) === 'high_risk'
-                      ? 'danger'
-                      : (selectedAlt ? selectedAlt.verdict : assessment.verdict) === 'caution'
-                      ? 'caution'
-                      : 'safe'
-                  }
-                >
-                  {(selectedAlt
-                    ? selectedAlt.verdict
-                    : assessment.verdict
-                  ).toUpperCase()}
-                </Badge>
-              )}
-            </div>
-
-            {assessment ? (
-              <div className="space-y-4 pt-2">
-                {/* Explanation Banner */}
-                <div
-                  className={`p-4 rounded-[12px] border ${
-                    (selectedAlt ? selectedAlt.verdict : assessment.verdict) === 'high_risk'
-                      ? 'bg-[#FEF3F2] border-[#FECDCA] text-[#B42318]'
-                      : (selectedAlt ? selectedAlt.verdict : assessment.verdict) === 'caution'
-                      ? 'bg-[#FFF4DB] border-[#FDE68A] text-[#B45309]'
-                      : 'bg-[#E8F7EE] border-[#A6F4C5] text-[#15803D]'
-                  }`}
-                >
-                  <p className="text-xs sm:text-sm font-medium leading-relaxed">
-                    {selectedAlt
-                      ? `Selected alternative: ${selectedAlt.title}. Shortfall risk drops to ${(selectedAlt.shortfall_prob * 100).toFixed(0)}%.`
-                      : assessment.explanation}
-                  </p>
-                </div>
-
-                {/* Animated / Clean Before and After Cash Curve */}
-                <div className="h-56 w-full pt-1">
-                  <span className="text-[11px] font-semibold text-[#6B7280] block mb-1">
-                    Projected Cash Trajectory (Next 60 Days):
-                  </span>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                      data={chartPoints}
-                      margin={{ top: 8, right: 12, left: -5, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F2F6" />
-                      <XAxis
-                        dataKey="day"
-                        stroke="#9CA3AF"
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={{ stroke: '#E8EAF0' }}
-                      />
-                      <YAxis
-                        stroke="#9CA3AF"
-                        fontSize={10}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`}
-                      />
-                      <Tooltip content={<ChartTooltip />} />
-                      <ReferenceLine y={0} stroke="#EF4444" strokeDasharray="4 4" strokeWidth={1.5} />
-                      <Line
-                        type="monotone"
-                        dataKey="before"
-                        stroke="#9CA3AF"
-                        strokeDasharray="4 4"
-                        strokeWidth={1.5}
-                        dot={false}
-                        name="Baseline balance"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="after"
-                        stroke={
-                          assessment.verdict === 'high_risk' ? '#B42318' : '#3F3DDB'
-                        }
-                        strokeWidth={2.5}
-                        dot={false}
-                        name="With this transaction"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Stat Numbers */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-xs">
-                  <div className="p-2.5 rounded-lg bg-[#F5F6FA] border border-[#E8EAF0]">
-                    <span className="text-[#6B7280] block text-[10px]">Shortfall risk:</span>
-                    <strong
-                      className={
-                        assessment.after_prob > 0.5 ? 'text-[#B42318]' : 'text-[#111827]'
-                      }
-                    >
-                      {Math.round(assessment.before_prob * 100)}% →{' '}
-                      {Math.round(
-                        (selectedAlt ? selectedAlt.shortfall_prob : assessment.after_prob) *
-                          100
-                      )}
-                      %
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-[#F5F6FA] border border-[#E8EAF0]">
-                    <span className="text-[#6B7280] block text-[10px]">Lowest balance:</span>
-                    <strong
-                      className={
-                        (selectedAlt ? selectedAlt.lowest_balance : assessment.after_lowest) <
-                        0
-                          ? 'text-[#B42318]'
-                          : 'text-[#111827]'
-                      }
-                    >
-                      {formatINR(
-                        selectedAlt ? selectedAlt.lowest_balance : assessment.after_lowest
-                      )}
-                    </strong>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-[#F5F6FA] border border-[#E8EAF0]">
-                    <span className="text-[#6B7280] block text-[10px]">Shortfall date:</span>
-                    <strong className="text-[#111827]">{assessment.lowest_date}</strong>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-[#F5F6FA] border border-[#E8EAF0]">
-                    <span className="text-[#6B7280] block text-[10px]">Simulation runs:</span>
-                    <strong className="text-[#15803D]">2,000 runs</strong>
-                  </div>
-                </div>
-
-                {/* ── AUTO-SIMULATED SAFER ALTERNATIVES ──────────────────── */}
-                <div className="pt-3 border-t border-[#E8EAF0] space-y-2.5">
-                  <span className="text-xs font-bold text-[#111827] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#3F3DDB]" />
-                    Auto-simulated safer alternatives:
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    {assessment.alternatives.map((alt) => {
-                      const isSelected = selectedAlt?.id === alt.id;
-                      return (
-                        <div
-                          key={alt.id}
-                          onClick={() => handleSelectAlternative(alt)}
-                          className={`p-3 rounded-[10px] border cursor-pointer transition-all flex flex-col justify-between space-y-1.5 ${
-                            isSelected
-                              ? 'bg-[#EEF0FD] border-[#3F3DDB] shadow-sm'
-                              : 'bg-white border-[#E8EAF0] hover:border-[#CBD5E1]'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-[#111827]">
-                                {alt.title}
-                              </span>
-                              {isSelected && (
-                                <Check className="w-3.5 h-3.5 text-[#3F3DDB]" />
-                              )}
-                            </div>
-                            <p className="text-[11px] text-[#6B7280] mt-1 leading-snug">
-                              {alt.description}
-                            </p>
-                          </div>
-
-                          <div className="pt-1.5 border-t border-[#F1F2F6] flex items-center justify-between text-[11px]">
-                            <span className="text-[#6B7280]">Risk:</span>
-                            <Badge variant={alt.verdict === 'high_risk' ? 'danger' : alt.verdict === 'caution' ? 'caution' : 'safe'}>
-                              {Math.round(alt.shortfall_prob * 100)}%
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="py-20 text-center space-y-2">
-                <p className="text-sm font-semibold text-[#111827]">
-                  No transaction evaluated yet
-                </p>
-                <p className="text-xs text-[#6B7280] max-w-sm mx-auto leading-relaxed">
-                  Fill in the payment details on the left or select a prefilled scenario chip above to run 2,000 vectorised Monte Carlo simulations.
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* Confirm Decision Button */}
-          {assessment && (
-            <div className="pt-3 border-t border-[#E8EAF0] flex items-center justify-between">
-              <span className="text-xs text-[#6B7280]">
-                {selectedAlt
-                  ? `Selected: ${selectedAlt.title}`
-                  : 'Ready to proceed with original terms'}
-              </span>
+          <div className="pt-2 flex justify-end">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              isLoading={isAssessing}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+            >
+              Check impact now
+            </Button>
+          </div>
+        </form>
+      </Card>
 
-              <Button
-                variant="primary"
-                size="md"
-                disabled={confirmed}
-                isLoading={isConfirming}
-                onClick={handleConfirmDecision}
-                leftIcon={confirmed ? <CheckCircle2 className="w-4 h-4" /> : undefined}
-                className={confirmed ? 'bg-[#15803D]' : undefined}
-              >
-                {confirmed ? 'Decision Recorded & Active' : 'Confirm & Lock into Forecast'}
-              </Button>
+      {/* ── Assessment Result: One Plain Sentence + One Chart + Best Alt ─── */}
+      {assessment && (
+        <div className="space-y-8 animate-fadeIn">
+          {/* Plain sentence verdict card */}
+          <div className="p-7 rounded-[24px] bg-[#F1E9DC] shadow-soft flex items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    assessment.verdict === 'safe'
+                      ? 'safe'
+                      : assessment.verdict === 'caution'
+                      ? 'caution'
+                      : 'danger'
+                  }
+                >
+                  Verdict: {assessment.verdict.toUpperCase()}
+                </Badge>
+                <span className="text-xs text-[#527A71] font-medium">
+                  30d shortage risk: {(assessment.before_prob * 100).toFixed(0)}% →{' '}
+                  <strong className="text-[#0F3D33]">
+                    {(assessment.after_prob * 100).toFixed(0)}%
+                  </strong>
+                </span>
+              </div>
+              <p className="text-base font-semibold font-serif text-[#0F3D33] pt-1">
+                {assessment.explanation}
+              </p>
+            </div>
+          </div>
+
+          {/* Before-and-After Chart */}
+          <Card bg="white" className="p-8 shadow-soft">
+            <h3 className="text-xs font-semibold text-[#527A71] uppercase tracking-wider mb-4">
+              Before vs After Cash Trajectory
+            </h3>
+            <div className="h-60 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartPoints} margin={{ top: 8, right: 10, left: -15, bottom: 0 }}>
+                  <XAxis dataKey="day" stroke="#8FB4AC" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis
+                    stroke="#8FB4AC"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val) => `₹${(val / 100000).toFixed(0)}L`}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <ReferenceLine y={0} stroke="#FF6B4A" strokeDasharray="3 3" />
+                  <Line
+                    type="monotone"
+                    dataKey="before"
+                    name="Current baseline"
+                    stroke="#8FB4AC"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="after"
+                    name="With this purchase"
+                    stroke="#0F3D33"
+                    strokeWidth={3}
+                    dot={false}
+                    animationDuration={700}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Best Safer Alternative Card */}
+          {bestAlternative && (
+            <div className="p-7 rounded-[24px] bg-[#CDEBDD] shadow-soft space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#0F3D33] uppercase tracking-wider">
+                  Recommended safer option
+                </span>
+                <span className="text-xs font-semibold text-[#1C6B56] bg-white px-3 py-1 rounded-full">
+                  Risk falls to {(bestAlternative.shortfall_prob * 100).toFixed(0)}%
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-base font-semibold font-serif text-[#0F3D33]">{bestAlternative.title}</h4>
+                <p className="text-xs text-[#28584E] mt-1">{bestAlternative.description}</p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedAlt(selectedAlt?.id === bestAlternative.id ? null : bestAlternative)
+                  }
+                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all duration-250 ${
+                    selectedAlt?.id === bestAlternative.id
+                      ? 'bg-[#0F3D33] text-white'
+                      : 'bg-white text-[#0F3D33] hover:bg-[#F1E9DC]'
+                  }`}
+                >
+                  {selectedAlt?.id === bestAlternative.id ? '✓ Selected' : 'Apply this option'}
+                </button>
+
+                {otherAlternatives.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOtherAlts(!showOtherAlts)}
+                    className="text-xs font-semibold text-[#0F3D33] hover:underline flex items-center gap-1"
+                  >
+                    {showOtherAlts ? 'Hide other options' : `See other options (${otherAlternatives.length})`}
+                    {showOtherAlts ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                )}
+              </div>
             </div>
           )}
-        </Card>
-      </div>
 
-      <PageGuidance
-        pageKey="pre-transaction"
-        bullets={[
-          'Checks proposed transactions against your projected bank balances, customer receipts, and fixed monthly debits.',
-          'Automatically tests alternative payment terms (such as 14-day delays or split instalments) to avoid overdraft triggers.',
-          'Confirming a transaction records it directly into your schedule and refreshes the cash runway across the platform.',
-        ]}
-      />
+          {/* Other alternatives behind progressive disclosure */}
+          {showOtherAlts && (
+            <div className="space-y-4 animate-fadeIn">
+              {otherAlternatives.map((alt) => (
+                <div
+                  key={alt.id}
+                  className="p-5 rounded-[20px] bg-white shadow-soft flex items-center justify-between gap-4"
+                >
+                  <div>
+                    <h5 className="text-sm font-semibold font-serif text-[#0F3D33]">{alt.title}</h5>
+                    <p className="text-xs text-[#527A71] mt-0.5">{alt.description}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlt(selectedAlt?.id === alt.id ? null : alt)}
+                    className={`px-4 py-2 rounded-full text-xs font-semibold shrink-0 transition-all ${
+                      selectedAlt?.id === alt.id
+                        ? 'bg-[#0F3D33] text-white'
+                        : 'bg-[#F1E9DC] text-[#0F3D33] hover:bg-[#E5DDD0]'
+                    }`}
+                  >
+                    {selectedAlt?.id === alt.id ? '✓ Selected' : 'Select'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Confirm Button */}
+          <div className="p-6 rounded-[24px] bg-white shadow-soft flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold font-serif text-[#0F3D33]">Ready to proceed?</p>
+              <p className="text-xs text-[#527A71]">
+                {selectedAlt ? `Recording with: ${selectedAlt.title}` : 'Recording original terms'}
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleConfirm}
+              isLoading={isConfirming}
+              disabled={confirmed}
+            >
+              {confirmed ? '✓ Recorded in forecast' : 'Confirm & record choice'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

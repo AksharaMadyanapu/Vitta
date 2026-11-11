@@ -12,7 +12,7 @@ export const AppShell: React.FC = () => {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-[#F5F6FA] text-[#111827]">
+    <div className="min-h-screen bg-[#FBF7F0] text-[#0F3D33]">
       {/* Onboarding Modals & Tour */}
       <WelcomeModal />
       <GuidedTour />
@@ -25,19 +25,19 @@ export const AppShell: React.FC = () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="pl-[232px] flex flex-col min-h-screen">
+      <div className="pl-16 md:pl-[232px] flex flex-col min-h-screen transition-all duration-250">
         {/* TopBar */}
         <TopBar />
 
-        {/* Page Content with 150ms simple fade */}
-        <main className="flex-1 mt-14 p-6 sm:p-8 max-w-6xl w-full mx-auto">
+        {/* Page Content with gentle 250ms fade and warm whitespace */}
+        <main className="flex-1 mt-16 p-6 sm:p-10 max-w-6xl w-full mx-auto space-y-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.25 }}
             >
               <Outlet />
             </motion.div>

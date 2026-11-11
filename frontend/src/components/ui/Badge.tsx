@@ -13,31 +13,53 @@ export const Badge: React.FC<BadgeProps> = ({
   children,
   ...props
 }) => {
+  // Rule 6: Status chips with soft mint, butter yellow, coral backgrounds and small matching dot
   const variantStyles = {
-    safe: "bg-[#E8F7EE] text-[#15803D] border border-[#C6F0D4]",
-    caution: "bg-[#FFF4DB] text-[#B45309] border border-[#FFE5A3]",
-    danger: "bg-[#FDECEA] text-[#B42318] border border-[#FAC7C3]",
-    neutral: "bg-[#F3F4F6] text-[#4B5563] border border-[#E8EAF0]",
-    brand: "bg-[#EEF0FD] text-[#3F3DDB] border border-[#D8DAFA]",
-    teal: "bg-[#E6F7F7] text-[#0EA5A4] border border-[#B2EBEB]",
+    safe: {
+      wrap: "bg-[#CDEBDD] text-[#0F3D33]",
+      dot: "bg-[#1C6B56]",
+    },
+    caution: {
+      wrap: "bg-[#FFE8A3] text-[#8A5B00]",
+      dot: "bg-[#8A5B00]",
+    },
+    danger: {
+      wrap: "bg-[#FDEEE9] text-[#FF6B4A]",
+      dot: "bg-[#FF6B4A]",
+    },
+    neutral: {
+      wrap: "bg-[#F1E9DC] text-[#527A71]",
+      dot: "bg-[#527A71]",
+    },
+    brand: {
+      wrap: "bg-[#CDEBDD] text-[#0F3D33]",
+      dot: "bg-[#0F3D33]",
+    },
+    teal: {
+      wrap: "bg-[#CDEBDD] text-[#0F3D33]",
+      dot: "bg-[#1C6B56]",
+    },
   };
 
   const sizeStyles = {
-    sm: "text-[11px] px-2 py-0.5",
-    md: "text-xs px-2.5 py-0.5",
+    sm: "text-[11px] px-2.5 py-1 gap-1.5",
+    md: "text-xs px-3 py-1 gap-2",
   };
+
+  const style = variantStyles[variant] || variantStyles.neutral;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium rounded-full",
+        "inline-flex items-center font-medium rounded-full select-none",
         sizeStyles[size],
-        variantStyles[variant],
+        style.wrap,
         className
       )}
       {...props}
     >
-      {children}
+      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", style.dot)} />
+      <span>{children}</span>
     </span>
   );
 };

@@ -12,20 +12,34 @@ Deccan Precision Components Pvt Ltd, Hyderabad. Manufactures automotive parts. O
 - Structure: /frontend, /backend, /sample_data, README.md, start scripts
 - Frontend dev server proxies /api to the backend (port 8000). Frontend runs on port 5173.
 
-## Design system
-- Light theme only with modern, trustworthy SaaS polish (inspired by Zoho Books, Mercury, Notion).
-- Background: #F5F6FA, cards white (#FFFFFF), 14px border radius, 1px border #E8EAF0, soft shadow (0 1px 2px rgba(16,24,40,0.05), 0 4px 12px rgba(16,24,40,0.04)). Slight lift on hover only for clickable cards.
-- Brand colour: Deep indigo #3F3DDB (buttons, links, active items, main chart line). Secondary accent teal #0EA5A4 used sparingly.
-- Status colours: soft muted pills only (green #15803D on #E8F7EE, amber #B45309 on #FFF4DB, red #B42318 on #FDECEA).
-- Sidebar: deep indigo background #1E1B4B, 232px wide, white text, active items with lighter indigo pill, small group headings in muted lavender (#A5B4FC). Inline SVG Runway logo mark and wordmark at the top.
-- Summary cards: 36px rounded square icon badge with matching tinted background, label, 28px/600 value, plain-language caption.
-- Overview page: subtle indigo-to-lavender welcome banner with greeting ("Good morning, Rakesh"), one-sentence cash status, two action buttons, and inline SVG chart illustration.
-- Typography: Plus Jakarta Sans for headings, Inter for body and numbers. Page title 26px/700. Tabular numbers for all money values, right-aligned in tables.
-- Motion: gentle 200 ms fade and 8px upward slide on page load, smooth hover states, 600 ms chart draw-in. No bouncing, count-up animations, glow, glassmorphism, neon, or decorative blobs.
-- Tables: 52px rows, light hover, status pills, avatar circles with initials for counterparties, right-aligned money.
-- Charts: soft area fill (8–12% indigo opacity) under main line, rounded line caps, light dashed gridlines, direct danger zone shading and labels on forecast.
-- Onboarding & Guidance: first-time welcome modal, interactive spotlight guided tour, getting-started checklist (persisted in localStorage), top bar help drawer with FAQs, collapsible page guidance boxes, inline term tooltips, prefilled example chips, and bottom next-step cue strips.
-- All future UI work must follow this design system and use plain-language copy.
+## Design system: "calm, friendly money mentor"
+- Background: Warm cream #FBF7F0. Surface: #FFFFFF used sparingly. Large colour-blocked sections: soft sand #F1E9DC.
+- Primary text & sidebar: Deep green ink #0F3D33. Active nav items: cream #FBF7F0 pill.
+- Status colours:
+  - "Safe": Soft mint #CDEBDD background with deep green ink #0F3D33 text and matching dot.
+  - "Watch": Butter yellow #FFE8A3 background with warm amber #8A5B00 text and matching dot.
+  - "Needs attention" / Primary CTA: Warm vibrant coral #FF6B4A (with white text on buttons, and soft coral #FDEEE9 on chips).
+- Typography:
+  - Headings, hero statements, and signature numbers: Fraunces (serif, weight 600, optical size auto).
+  - Body copy, labels, and metadata: Inter (clean, neutral, readable).
+  - Home headline 40px, page titles 32px, big signature numbers 36px.
+  - Lots of whitespace: 48px between major sections, 28px padding inside cards.
+- Shapes:
+  - Very rounded cards (24px radius, rounded-3xl), pill buttons (rounded-full).
+  - No hard grey borders — use colour blocking (white, sand #F1E9DC, mint #CDEBDD) and soft, warm shadows (0 2px 8px rgba(15,61,51,0.04), 0 8px 24px rgba(15,61,51,0.06)).
+- Home hero:
+  - Large colour-blocked panel (sand #F1E9DC or mint #CDEBDD depending on cash status) with headline on the left and a custom inline-SVG illustration on the right: friendly stylised workshop/factory with a gently rising path or coins, in 3 status variants (healthy, watch, urgent).
+- Charts:
+  - Thick rounded lines (3px) in deep green #0F3D33.
+  - Soft mint #CDEBDD area fill under the line (opacity ~0.35).
+  - Coral #FF6B4A danger zone with hand-drawn-style annotation arrow & label ("Cash gets tight here").
+  - No gridlines except a faint baseline, no legends (labelled directly), rounded bar tops, custom white floating tooltips with soft shadow.
+- Status:
+  - Friendly status chips (mint, butter yellow, coral) with a small matching indicator dot.
+- Lists & Tables:
+  - Avatar circles with initials in palette colours, generous row heights, status chips on the right, amounts rendered in Fraunces serif.
+- Motion:
+  - Gentle 250 ms fades, soft hover lift on clickable cards, charts draw in over 700 ms. No bouncing, glow, glass, neon, or emoji.
 
 ## Features
 1 Dashboard, 2 Bank and transactions (manual, CSV upload, simulated bank connection), 3 Customers and suppliers, 4 Invoices (create, status tracking, PDF/image upload with data extraction), 5 Reminders (7 days before due) and calendar, 6 Customer payment behaviour analytics, 7 Cash-flow forecast (14/30/60 days, shortage date, top 5 contributing transactions), 8 Risk alerts and recommendations, 9 Pre-transaction risk assessment, 10 Business performance analytics.

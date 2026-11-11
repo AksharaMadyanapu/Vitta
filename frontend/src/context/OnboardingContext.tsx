@@ -19,28 +19,18 @@ interface OnboardingContextType {
   prevTourStep: () => void;
   skipTour: () => void;
   restartTour: () => void;
+  isHelpOpen: boolean;
+  setIsHelpOpen: (open: boolean) => void;
   checklist: ChecklistState;
   completeChecklistTask: (key: keyof ChecklistState) => void;
   checklistDismissed: boolean;
   setChecklistDismissed: (dismissed: boolean) => void;
-  isHelpOpen: boolean;
-  setIsHelpOpen: (open: boolean) => void;
   resetAllOnboarding: () => void;
 }
 
 const STORAGE_KEYS = {
   WELCOME_SEEN: 'runway_onboarding_welcome_seen',
   TOUR_COMPLETED: 'runway_onboarding_tour_completed',
-  CHECKLIST_DISMISSED: 'runway_onboarding_checklist_dismissed',
-  CHECKLIST_STATE: 'runway_onboarding_checklist_state',
-};
-
-const initialChecklist: ChecklistState = {
-  connectBank: true,     // Done with sample data
-  addCustomers: true,    // Done with sample data
-  addInvoice: true,      // Done with sample data
-  viewForecast: false,   // Guides the user to explore
-  checkPurchase: false,  // Guides the user to explore
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -49,7 +39,6 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Safe localStorage helper
   const getStorage = (key: string, defaultVal: string) => {
     try {
       const val = localStorage.getItem(key);
@@ -62,61 +51,34 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const setStorage = (key: string, value: string) => {
     try {
       localStorage.setItem(key, value);
-    } catch {
-      // ignore in private browsing or restricted quota
-    }
+    } catch {}
   };
 
-  // Welcome modal state: shown on very first visit
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(() => {
     return getStorage(STORAGE_KEYS.WELCOME_SEEN, 'false') !== 'true';
   });
 
-  // Tour state
   const [tourActive, setTourActive] = useState<boolean>(false);
   const [tourStep, setTourStep] = useState<number>(0);
-
-  // Help drawer state
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
-
-  // Checklist state
-  const [checklistDismissed, setChecklistDismissedState] = useState<boolean>(() => {
-    return getStorage(STORAGE_KEYS.CHECKLIST_DISMISSED, 'false') === 'true';
+  const [checklistDismissed, setChecklistDismissed] = useState<boolean>(true);
+  const [checklist, setChecklist] = useState<ChecklistState>({
+    connectBank: true,
+    addCustomers: true,
+    addInvoice: true,
+    viewForecast: true,
+    checkPurchase: true,
   });
 
-  const [checklist, setChecklist] = useState<ChecklistState>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEYS.CHECKLIST_STATE);
-      if (stored) return JSON.parse(stored);
-    } catch {
-      // fallback
-    }
-    return initialChecklist;
-  });
-
-  const setChecklistDismissed = (dismissed: boolean) => {
-    setChecklistDismissedState(dismissed);
-    setStorage(STORAGE_KEYS.CHECKLIST_DISMISSED, String(dismissed));
+  const completeChecklistTask = (key: keyof ChecklistState) => {
+    setChecklist((prev) => ({ ...prev, [key]: true }));
   };
 
-  const completeChecklistTask = useCallback((key: keyof ChecklistState) => {
-    setChecklist((prev) => {
-      const updated = { ...prev, [key]: true };
-      try {
-        localStorage.setItem(STORAGE_KEYS.CHECKLIST_STATE, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  }, []);
-
-  // Track page visits to auto-complete checklist tasks
-  useEffect(() => {
-    if (location.pathname === '/forecast') {
-      completeChecklistTask('viewForecast');
-    } else if (location.pathname === '/pre-transaction') {
-      completeChecklistTask('checkPurchase');
-    }
-  }, [location.pathname, completeChecklistTask]);
+  const resetAllOnboarding = () => {
+    setShowWelcomeModal(true);
+    setTourStep(0);
+    setTourActive(true);
+  };
 
   const closeWelcomeModal = () => {
     setShowWelcomeModal(false);
@@ -132,17 +94,15 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // Exactly 3 Tour Steps: Home -> Forecast -> Check a purchase
   const tourRoutes = [
-    '/dashboard',       // Step 0: Overview
-    '/dashboard',       // Step 1: Needs your attention
-    '/forecast',        // Step 2: Cash forecast
-    '/pre-transaction', // Step 3: Check a purchase
-    '/invoices',        // Step 4: Invoices
-    '/dashboard',       // Step 5: Help button
+    '/dashboard',        // Step 0: Home
+    '/forecast',         // Step 1: Forecast
+    '/pre-transaction',  // Step 2: Check a purchase
   ];
 
   const nextTourStep = () => {
-    if (tourStep < 5) {
+    if (tourStep < 2) {
       const next = tourStep + 1;
       setTourStep(next);
       const targetRoute = tourRoutes[next];
@@ -168,29 +128,11 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const skipTour = () => {
     setTourActive(false);
     setStorage(STORAGE_KEYS.TOUR_COMPLETED, 'true');
-    if (location.pathname !== '/dashboard') {
-      navigate('/dashboard');
-    }
   };
 
   const restartTour = () => {
-    setIsHelpOpen(false);
-    startTour();
-  };
-
-  const resetAllOnboarding = () => {
-    try {
-      localStorage.removeItem(STORAGE_KEYS.WELCOME_SEEN);
-      localStorage.removeItem(STORAGE_KEYS.TOUR_COMPLETED);
-      localStorage.removeItem(STORAGE_KEYS.CHECKLIST_DISMISSED);
-      localStorage.removeItem(STORAGE_KEYS.CHECKLIST_STATE);
-    } catch {}
-    setShowWelcomeModal(true);
-    setTourActive(false);
     setTourStep(0);
-    setChecklist(initialChecklist);
-    setChecklistDismissedState(false);
-    setIsHelpOpen(false);
+    setTourActive(true);
     navigate('/dashboard');
   };
 
@@ -206,12 +148,12 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         prevTourStep,
         skipTour,
         restartTour,
+        isHelpOpen,
+        setIsHelpOpen,
         checklist,
         completeChecklistTask,
         checklistDismissed,
         setChecklistDismissed,
-        isHelpOpen,
-        setIsHelpOpen,
         resetAllOnboarding,
       }}
     >
@@ -227,4 +169,3 @@ export const useOnboarding = () => {
   }
   return context;
 };
-

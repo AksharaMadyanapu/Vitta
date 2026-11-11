@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'sand' | 'mint';
   size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -25,20 +25,25 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = "inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-180 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#3F3DDB] disabled:opacity-50 disabled:pointer-events-none select-none text-sm";
+    // Rule 3: Pill buttons (rounded-full), no hard borders, gentle 250ms transitions
+    const baseStyles = "inline-flex items-center justify-center font-medium rounded-full transition-all duration-250 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B4A] disabled:opacity-50 disabled:pointer-events-none select-none text-sm";
 
     const sizeStyles = {
-      sm: "h-8 px-3 text-xs gap-1.5",
-      md: "h-9 px-3.5 text-sm gap-2",
-      lg: "h-10 px-4 text-sm gap-2",
-      icon: "h-9 w-9 p-0",
+      sm: "h-8 px-4 text-xs gap-1.5",
+      md: "h-10 px-5 text-sm gap-2",
+      lg: "h-12 px-7 text-sm font-semibold gap-2.5 shadow-soft hover:shadow-soft-hover hover:-translate-y-0.5",
+      icon: "h-10 w-10 p-0",
     };
 
     const variantStyles = {
-      primary: "bg-[#3F3DDB] text-white hover:bg-[#3230C8] shadow-sm",
-      secondary: "bg-white text-[#374151] border border-[#E8EAF0] hover:bg-[#F9FAFB] hover:text-[#111827] shadow-sm",
-      ghost: "text-[#4B5563] hover:text-[#111827] hover:bg-[#F3F4F6]",
-      danger: "bg-[#FDECEA] text-[#B42318] border border-[#FAC7C3] hover:bg-[#FCD8D4]",
+      // Coral for primary CTA
+      primary: "bg-[#FF6B4A] text-white hover:bg-[#E85535] shadow-soft hover:shadow-soft-hover",
+      // Soft sand / white for secondary
+      secondary: "bg-white text-[#0F3D33] hover:bg-[#F1E9DC] shadow-soft",
+      sand: "bg-[#F1E9DC] text-[#0F3D33] hover:bg-[#E5DDD0]",
+      mint: "bg-[#CDEBDD] text-[#0F3D33] hover:bg-[#BDE0D0] font-semibold",
+      ghost: "text-[#527A71] hover:text-[#0F3D33] hover:bg-[#F1E9DC]/60",
+      danger: "bg-[#FDEEE9] text-[#FF6B4A] hover:bg-[#FCDFD6]",
     };
 
     return (
@@ -48,13 +53,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(baseStyles, sizeStyles[size], variantStyles[variant], className)}
         {...props}
       >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin text-current" />
-        ) : (
-          leftIcon
-        )}
-        {children}
-        {!isLoading && rightIcon}
+        {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin text-current" />}
+        {!isLoading && leftIcon && <span className="shrink-0">{leftIcon}</span>}
+        <span>{children}</span>
+        {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
       </button>
     );
   }

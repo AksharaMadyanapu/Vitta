@@ -1,15 +1,9 @@
 import {
   Home,
-  FileText,
-  Users,
-  Truck,
-  Building,
+  Wallet,
   TrendingUp,
   ShieldCheck,
-  Calendar,
-  Clock,
-  BarChart2,
-  Settings,
+  MoreHorizontal,
   LucideIcon,
 } from 'lucide-react';
 
@@ -25,85 +19,42 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+export const navigationItems: NavItem[] = [
+  {
+    id: 'home',
+    label: 'Home',
+    path: '/dashboard',
+    icon: Home,
+  },
+  {
+    id: 'money',
+    label: 'Money',
+    path: '/money',
+    icon: Wallet,
+  },
+  {
+    id: 'forecast',
+    label: 'Forecast',
+    path: '/forecast',
+    icon: TrendingUp,
+  },
+  {
+    id: 'check-purchase',
+    label: 'Check a purchase',
+    path: '/pre-transaction',
+    icon: ShieldCheck,
+  },
+  {
+    id: 'more',
+    label: 'More',
+    path: '/more',
+    icon: MoreHorizontal,
+  },
+];
+
 export const navigationGroups: NavGroup[] = [
   {
-    heading: 'HOME',
-    items: [
-      {
-        id: 'overview',
-        label: 'Overview',
-        path: '/dashboard',
-        icon: Home,
-      },
-    ],
-  },
-  {
-    heading: 'MONEY',
-    items: [
-      {
-        id: 'invoices',
-        label: 'Invoices',
-        path: '/invoices',
-        icon: FileText,
-      },
-      {
-        id: 'customers',
-        label: 'Customers',
-        path: '/customers',
-        icon: Users,
-      },
-      {
-        id: 'suppliers',
-        label: 'Suppliers',
-        path: '/suppliers',
-        icon: Truck,
-      },
-      {
-        id: 'banking',
-        label: 'Bank and transactions',
-        path: '/banking',
-        icon: Building,
-      },
-    ],
-  },
-  {
-    heading: 'PLANNING',
-    items: [
-      {
-        id: 'forecast',
-        label: 'Cash forecast',
-        path: '/forecast',
-        icon: TrendingUp,
-      },
-      {
-        id: 'check-purchase',
-        label: 'Check a purchase',
-        path: '/pre-transaction',
-        icon: ShieldCheck,
-      },
-      {
-        id: 'calendar',
-        label: 'Calendar',
-        path: '/reminders',
-        icon: Calendar,
-      },
-    ],
-  },
-  {
-    heading: 'INSIGHTS',
-    items: [
-      {
-        id: 'payment-behaviour',
-        label: 'Payment behaviour',
-        path: '/customer-analytics',
-        icon: Clock,
-      },
-      {
-        id: 'reports',
-        label: 'Reports',
-        path: '/business-analytics',
-        icon: BarChart2,
-      },
-    ],
+    heading: 'RUNWAY',
+    items: navigationItems,
   },
 ];
